@@ -24,7 +24,7 @@ The protein-sssl-operator implements state-of-the-art self-supervised learning t
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/protein-sssl-operator.git
+git clone https://github.com/danieleschmidt/protein-sssl-operator.git
 cd protein-sssl-operator
 
 # Create conda environment with dependencies
@@ -546,7 +546,7 @@ Priority areas:
 ```bibtex
 @article{protein_sssl_operator_2025,
   title={Self-Supervised Structure-Sequence Learning with Neural Operators for Protein Folding under Uncertainty},
-  author={Your Name et al.},
+  author={Daniel Schmidt},
   journal={Nature Methods},
   year={2025}
 }
