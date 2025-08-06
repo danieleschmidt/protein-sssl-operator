@@ -1,0 +1,74 @@
+name: protein-sssl
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+  - bioconda
+dependencies:
+  - python=3.10
+  - pytorch>=2.0.0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.8
+  - numpy>=1.21.0
+  - scipy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - jupyter
+  - notebook
+  - tqdm
+  - pyyaml
+  - h5py
+  - pip
+  
+  # Scientific computing
+  - numba
+  - cython
+  - sympy
+  
+  # Bioinformatics
+  - biopython
+  - biotite
+  - mdtraj
+  - py3dmol
+  
+  # Machine learning
+  - transformers
+  - datasets
+  - tokenizers
+  - accelerate
+  - evaluate
+  
+  # Optimization and monitoring
+  - wandb
+  - tensorboard
+  - optuna
+  
+  # Development tools
+  - pytest
+  - pytest-cov
+  - black
+  - isort
+  - flake8
+  - mypy
+  - pre-commit
+  
+  # Molecular dynamics (optional)
+  - openmm
+  - pdbfixer
+  
+  - pip:
+    - einops
+    - omegaconf
+    - hydra-core
+    - py3Dmol
+    - biotite
+    - fair-esm
+    - torchmetrics
+    - lightning
+    - deepspeed
+    - flash-attn
+    - xformers
+    - triton
