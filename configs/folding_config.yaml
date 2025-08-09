@@ -1,0 +1,293 @@
+# Configuration for Structure Folding Fine-tuning
+# This file defines parameters for fine-tuning the SSL model on structure prediction
+
+model:
+  # Base SSL model configuration
+  ssl_model_path: "./ssl_checkpoints/final_model"  # Path to pre-trained SSL model
+  
+  # Neural Operator configuration
+  operator_layers: 12            # Number of neural operator layers
+  fourier_modes: 64              # Number of Fourier modes
+  activation: "gelu"             # Activation function
+  
+  # Structure prediction heads
+  structure_heads:
+    distance_map:
+      enabled: true              # Enable distance map prediction
+      num_bins: 64               # Number of distance bins
+      max_distance: 22.0         # Maximum distance (Angstroms)
+      
+    torsion_angles:
+      enabled: true              # Enable torsion angle prediction
+      num_angles: 8              # Number of torsion angles per residue
+      
+    secondary_structure:
+      enabled: true              # Enable secondary structure prediction
+      num_classes: 8             # Number of SS classes (DSSP)
+      
+    uncertainty:
+      enabled: true              # Enable uncertainty quantification
+      method: "ensemble"         # Uncertainty method: "ensemble", "dropout", "evidential"
+      num_ensemble: 5            # Number of ensemble models
+  
+  # Model architecture
+  d_model: 1280                  # Model dimension (from SSL model)
+  n_heads: 20                    # Number of attention heads
+  layer_norm_eps: 1e-5           # Layer normalization epsilon
+  dropout: 0.1                   # Dropout probability
+
+data:
+  # Training data configuration
+  structure_data_path: "data/pdb_structures"  # Path to PDB structure data
+  sequence_data_path: "data/sequences.fasta"  # Path to sequences
+  
+  # Data splits
+  train_split: 0.8               # Training split fraction
+  val_split: 0.1                 # Validation split fraction
+  test_split: 0.1                # Test split fraction
+  
+  # Data filtering
+  filters:
+    min_length: 30               # Minimum sequence length
+    max_length: 512              # Maximum sequence length
+    resolution_cutoff: 3.0       # Maximum structure resolution (Angstroms)
+    exclude_membrane: false      # Exclude membrane proteins
+    exclude_dna_rna: true        # Exclude DNA/RNA binding proteins
+  
+  # Data preprocessing
+  preprocessing:
+    center_coordinates: true     # Center coordinates at origin
+    normalize_coordinates: false # Normalize coordinate magnitudes
+    add_noise: false            # Add coordinate noise for robustness
+    noise_std: 0.1              # Standard deviation of coordinate noise
+  
+  # Augmentation
+  augmentation:
+    rotation_augmentation: true  # Random rotation augmentation
+    translation_augmentation: false  # Random translation
+    coordinate_dropout: 0.1      # Randomly mask coordinates
+    sequence_masking: 0.05       # Mask sequence for robustness
+
+training:
+  # Training hyperparameters
+  epochs: 50                     # Number of training epochs
+  batch_size: 16                 # Training batch size
+  learning_rate: 1e-4            # Initial learning rate
+  weight_decay: 0.01             # Weight decay
+  warmup_steps: 5000             # Learning rate warmup steps
+  max_grad_norm: 1.0             # Gradient clipping threshold
+  
+  # Optimization
+  optimizer_type: "adamw"        # Optimizer type
+  optimizer_params:
+    betas: [0.9, 0.98]          # Adam beta parameters
+    eps: 1e-6                    # Adam epsilon
+  
+  # Learning rate scheduling
+  scheduler_type: "reduce_on_plateau"  # Scheduler type
+  scheduler_params:
+    factor: 0.5                  # Reduction factor
+    patience: 5                  # Patience in epochs
+    min_lr: 1e-6                # Minimum learning rate
+  
+  # Loss configuration
+  loss_weights:
+    distance_map: 1.0            # Distance map loss weight
+    torsion_angles: 0.5          # Torsion angle loss weight
+    secondary_structure: 0.3     # Secondary structure loss weight
+    uncertainty: 0.2             # Uncertainty loss weight
+  
+  # Memory optimization
+  gradient_checkpointing: true   # Enable gradient checkpointing
+  mixed_precision: true          # Use automatic mixed precision
+  accumulation_steps: 4          # Gradient accumulation steps
+  
+  # Regularization
+  dropout_schedule: null         # Dropout scheduling
+  label_smoothing: 0.1           # Label smoothing for classification
+  
+  # Training techniques
+  use_ema: true                  # Use exponential moving average
+  ema_decay: 0.999              # EMA decay rate
+  
+  # Early stopping
+  early_stopping:
+    enabled: true                # Enable early stopping
+    patience: 10                 # Patience in epochs
+    min_delta: 1e-4             # Minimum improvement
+    metric: "val_total_loss"    # Metric to monitor
+  
+  # Curriculum learning
+  curriculum_learning:
+    enabled: false               # Enable curriculum learning
+    start_max_length: 64         # Starting maximum sequence length
+    length_increase_epochs: 5    # Epochs between length increases
+    final_max_length: 512        # Final maximum sequence length
+  
+  # Logging and evaluation
+  eval_every: 500                # Evaluation frequency (steps)
+  save_every: 2000               # Checkpoint frequency (steps)
+  log_every: 50                  # Logging frequency (steps)
+
+# Evaluation configuration
+evaluation:
+  # Evaluation metrics
+  metrics:
+    structure_metrics:
+      - "tm_score"               # TM-score
+      - "gdt_ts"                 # GDT-TS
+      - "gdt_ha"                 # GDT-HA
+      - "rmsd"                   # RMSD
+      - "lddt"                   # lDDT
+    
+    prediction_metrics:
+      - "distance_accuracy"      # Distance map accuracy
+      - "contact_precision"      # Contact precision
+      - "contact_recall"         # Contact recall
+      - "ss_accuracy"            # Secondary structure accuracy
+      - "torsion_mae"           # Torsion angle MAE
+    
+    uncertainty_metrics:
+      - "calibration"            # Uncertainty calibration
+      - "coverage"               # Prediction coverage
+      - "resolution"             # Uncertainty resolution
+  
+  # Evaluation settings
+  num_recycles: 3                # Number of recycling iterations
+  ensemble_size: 5               # Ensemble size for uncertainty
+  
+  # Structure quality thresholds
+  quality_thresholds:
+    high_confidence: 0.9         # High confidence threshold
+    medium_confidence: 0.7       # Medium confidence threshold
+    low_confidence: 0.5          # Low confidence threshold
+
+# Hardware configuration
+hardware:
+  num_gpus: 1                    # Number of GPUs
+  num_workers: 4                 # Data loading workers
+  pin_memory: true               # Pin memory for GPU transfer
+  
+  # Memory management
+  max_memory_gb: 24              # Maximum GPU memory usage
+  empty_cache_freq: 1000         # Cache clearing frequency
+  
+  # Distributed training
+  distributed:
+    enabled: false               # Enable distributed training
+    backend: "nccl"             # Distributed backend
+    init_method: "env://"       # Initialization method
+
+# Monitoring configuration
+monitoring:
+  # Weights & Biases
+  wandb:
+    enabled: true                # Enable wandb logging
+    project: "protein-folding"   # Project name
+    entity: null                 # Entity name
+    tags:
+      - "folding"
+      - "fine-tuning"
+      - "structure-prediction"
+    notes: "Structure folding fine-tuning experiment"
+  
+  # System monitoring
+  system_monitoring:
+    enabled: true                # Enable system monitoring
+    log_interval: 60             # Monitoring interval (seconds)
+  
+  # Model monitoring
+  model_monitoring:
+    track_gradients: true        # Track gradient statistics
+    track_weights: false         # Track weight statistics
+    track_activations: false     # Track activation statistics
+
+# Validation and testing
+validation:
+  # Validation dataset
+  validation_frequency: 1        # Validate every N epochs
+  validation_metrics: "all"     # Validation metrics to compute
+  
+  # Structure evaluation
+  structure_evaluation:
+    save_predictions: true       # Save predicted structures
+    save_confidence_plots: true  # Save confidence plots
+    max_structures: 100          # Maximum structures to save
+  
+  # Ablation studies
+  ablation_studies:
+    enabled: false               # Enable ablation studies
+    components_to_ablate:
+      - "uncertainty"           # Test without uncertainty
+      - "neural_operator"       # Test without neural operator
+      - "recycling"            # Test without recycling
+
+# Paths and directories
+paths:
+  # Output paths
+  output_dir: "./folding_checkpoints"  # Output directory
+  logs_dir: "./folding_logs"           # Logs directory
+  predictions_dir: "./predictions"     # Predictions directory
+  
+  # Model paths
+  best_model_path: "best_folding_model.pt"     # Best model filename
+  final_model_path: "final_folding_model.pt"   # Final model filename
+  
+  # Cache paths
+  cache_dir: "./folding_cache"         # Cache directory
+  preprocessed_dir: "./preprocessed"   # Preprocessed data directory
+
+# Advanced configuration
+advanced:
+  # Neural operator enhancements
+  use_spectral_norm: false       # Use spectral normalization
+  use_residual_connections: true # Use residual connections in operator
+  
+  # Attention enhancements
+  use_relative_attention: false  # Use relative position attention
+  use_axial_attention: false     # Use axial attention for long sequences
+  
+  # Training enhancements
+  use_gradient_scaling: true     # Use gradient scaling
+  use_stochastic_depth: false    # Use stochastic depth
+  
+  # Structure prediction enhancements
+  use_template_matching: false   # Use template matching
+  use_msa_features: false        # Use MSA features (if available)
+  
+  # Experimental features
+  use_graph_neural_networks: false    # Use GNNs for structure modeling
+  use_equivariant_layers: false       # Use equivariant layers
+  use_invariant_features: true        # Use rotation-invariant features
+
+# Security configuration
+security:
+  # Input validation
+  max_sequence_length: 1024      # Maximum sequence length
+  max_structure_size: 2048       # Maximum structure size
+  
+  # Model security
+  verify_model_integrity: true   # Verify model file integrity
+  sanitize_inputs: true          # Sanitize all inputs
+  
+  # Resource limits
+  memory_limit_gb: 32           # Hard memory limit
+  time_limit_hours: 48          # Maximum training time
+
+# Reproducibility
+seed: 42                        # Random seed
+deterministic: false            # Deterministic operations (slower)
+benchmark: true                 # Enable cuDNN benchmark for speed
+
+# Debugging and profiling
+debug:
+  enabled: false                 # Enable debug mode
+  profile_memory: false          # Profile memory usage
+  profile_time: false            # Profile execution time
+  save_intermediate: false       # Save intermediate outputs
+  
+  # Debug outputs
+  debug_outputs:
+    save_attention_maps: false   # Save attention visualizations
+    save_feature_maps: false     # Save intermediate features
+    save_gradients: false        # Save gradient information
