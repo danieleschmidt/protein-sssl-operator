@@ -1,0 +1,189 @@
+# Configuration for SSL Pre-training
+# This file defines all parameters for self-supervised learning pre-training
+
+model:
+  # Core architecture parameters
+  d_model: 1280              # Model dimension (standard ESM-2 size)
+  n_layers: 33               # Number of transformer layers
+  n_heads: 20                # Number of attention heads
+  vocab_size: 21             # Amino acid vocabulary size
+  max_length: 1024           # Maximum sequence length
+  
+  # Self-supervised learning objectives
+  ssl_objectives:
+    - "masked_modeling"      # Masked language modeling
+    - "contrastive"          # Contrastive learning
+    - "distance_prediction"  # Distance map prediction
+  
+  # Regularization
+  dropout: 0.1               # Dropout probability
+  attention_dropout: 0.1     # Attention dropout
+  layer_norm_eps: 1e-5       # Layer normalization epsilon
+
+data:
+  # Dataset configuration
+  type: "fasta"              # Dataset type: "fasta" or "text"
+  path: "data/uniref50_sample.fasta"  # Path to training data
+  max_length: 1024           # Maximum sequence length
+  clustering_threshold: 0.5  # Sequence clustering threshold
+  max_sequences: null        # Maximum number of sequences (null = all)
+  
+  # Data preprocessing
+  tokenization:
+    add_special_tokens: true # Add [CLS], [SEP] tokens
+    padding: "max_length"    # Padding strategy
+    truncation: true         # Truncate long sequences
+  
+  # Data augmentation
+  augmentation:
+    mask_probability: 0.15   # Probability of masking tokens
+    random_mask_prob: 0.1    # Probability of random token replacement
+    unchanged_prob: 0.1      # Probability of keeping original token
+
+training:
+  # Training hyperparameters
+  epochs: 10                 # Number of training epochs
+  batch_size: 32             # Training batch size
+  learning_rate: 1e-4        # Initial learning rate
+  weight_decay: 0.01         # Weight decay for regularization
+  warmup_steps: 10000        # Learning rate warmup steps
+  max_grad_norm: 1.0         # Gradient clipping threshold
+  
+  # Memory optimization
+  gradient_checkpointing: true    # Enable gradient checkpointing
+  mixed_precision: true           # Use automatic mixed precision
+  accumulation_steps: 4           # Gradient accumulation steps
+  
+  # Optimizer configuration
+  optimizer_type: "adamw"         # Optimizer: "adamw" or "adam"
+  optimizer_params:
+    betas: [0.9, 0.95]           # Adam beta parameters
+    eps: 1e-8                     # Adam epsilon
+  
+  # Learning rate scheduling
+  scheduler_type: "cosine"        # Scheduler: "cosine", "linear", "constant"
+  scheduler_params:
+    eta_min: 1e-6                # Minimum learning rate for cosine
+    warmup_type: "linear"        # Warmup type: "linear" or "constant"
+  
+  # SSL loss weights
+  ssl_loss_weights:
+    masked_lm: 1.0              # Masked language modeling weight
+    contrastive: 0.5            # Contrastive learning weight
+    distance_prediction: 0.3    # Distance prediction weight
+  
+  # Logging and checkpointing
+  eval_every: 1000              # Evaluation frequency (steps)
+  save_every: 5000              # Checkpoint saving frequency (steps)
+  log_every: 100                # Logging frequency (steps)
+  
+  # Early stopping
+  early_stopping:
+    enabled: true               # Enable early stopping
+    patience: 10                # Early stopping patience (epochs)
+    min_delta: 1e-4            # Minimum improvement threshold
+    metric: "masked_lm_loss"   # Metric to monitor
+
+# Hardware configuration
+hardware:
+  num_gpus: 1                   # Number of GPUs to use
+  num_workers: 4                # Number of data loading workers
+  pin_memory: true              # Pin memory for faster GPU transfer
+  
+  # Distributed training
+  distributed:
+    backend: "nccl"             # Distributed backend
+    init_method: "env://"       # Initialization method
+  
+  # Memory management
+  memory:
+    max_memory_gb: 24           # Maximum memory usage (GB)
+    empty_cache_freq: 1000      # Cache clearing frequency (steps)
+
+# Monitoring and logging
+monitoring:
+  # Weights & Biases
+  wandb:
+    enabled: true               # Enable wandb logging
+    project: "protein-ssl-pretraining"
+    entity: null                # Wandb entity (username/team)
+    tags:                       # Experiment tags
+      - "ssl"
+      - "protein"
+      - "pretraining"
+    notes: "SSL pre-training experiment"
+  
+  # Resource monitoring
+  resource_logging:
+    enabled: true               # Enable system resource monitoring
+    log_interval: 60            # Monitoring interval (seconds)
+    
+  # Performance tracking
+  performance:
+    track_gradients: true       # Track gradient statistics
+    track_activations: false    # Track activation statistics (expensive)
+    profile_model: false        # Enable model profiling (expensive)
+
+# Validation configuration
+validation:
+  enabled: true                 # Enable validation during training
+  validation_split: 0.1         # Fraction of data for validation
+  validation_metrics:
+    - "masked_lm_accuracy"      # Masked LM accuracy
+    - "contrastive_accuracy"    # Contrastive accuracy
+    - "perplexity"              # Language model perplexity
+  
+  # Validation frequency
+  validate_every_n_epochs: 1    # Validate every N epochs
+  validate_at_start: false      # Validate before training starts
+
+# Security and safety
+security:
+  # Input validation
+  max_sequence_length: 2048     # Hard limit on sequence length
+  max_batch_size: 128           # Hard limit on batch size
+  
+  # Model safety
+  parameter_limit: 10e9         # Maximum number of model parameters
+  memory_limit_gb: 32           # Hard memory limit
+  
+  # Checkpointing security
+  verify_checksums: true        # Verify checkpoint integrity
+  backup_checkpoints: true      # Keep backup checkpoints
+
+# Reproducibility
+seed: 42                        # Random seed for reproducibility
+deterministic: false            # Enable deterministic operations (slower)
+
+# Paths and directories
+paths:
+  # Output directories
+  output_dir: "./ssl_checkpoints"     # Main output directory
+  logs_dir: "./logs"                  # Logs directory
+  cache_dir: "./cache"                # Cache directory
+  
+  # Checkpoint management
+  checkpoint:
+    save_best: true                   # Save best model based on validation
+    save_last: true                   # Always save last checkpoint
+    save_every_n_epochs: 5           # Save checkpoint every N epochs
+    max_checkpoints: 5                # Maximum number of checkpoints to keep
+
+# Advanced features
+advanced:
+  # Model architecture variations
+  use_rotary_embeddings: false        # Use rotary position embeddings
+  use_alibi: false                    # Use ALiBi position encoding
+  use_flash_attention: false          # Use FlashAttention (if available)
+  
+  # Training techniques
+  use_ema: false                      # Use exponential moving average
+  ema_decay: 0.999                    # EMA decay rate
+  
+  # Regularization techniques
+  dropout_schedule: null              # Dropout scheduling (null = constant)
+  label_smoothing: 0.0                # Label smoothing factor
+  
+  # Experimental features
+  use_compile: false                  # Use torch.compile (PyTorch 2.0+)
+  compile_mode: "default"             # Compile mode: "default", "reduce-overhead", "max-autotune"
