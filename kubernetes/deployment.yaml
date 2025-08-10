@@ -1,0 +1,223 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: protein-sssl-training
+  labels:
+    app: protein-sssl
+    component: training
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: protein-sssl
+      component: training
+  template:
+    metadata:
+      labels:
+        app: protein-sssl
+        component: training
+    spec:
+      nodeSelector:
+        accelerator: nvidia-tesla-v100
+      containers:
+      - name: training
+        image: protein-sssl:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "16Gi"
+            cpu: "4"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "32Gi"
+            cpu: "8"
+            nvidia.com/gpu: 2
+        env:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0,1"
+        - name: PYTHONPATH
+          value: "/app"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: WANDB_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: protein-sssl-secrets
+              key: wandb-api-key
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+          readOnly: true
+        - name: checkpoints-volume
+          mountPath: /app/checkpoints
+        - name: logs-volume
+          mountPath: /app/logs
+        - name: shm-volume
+          mountPath: /dev/shm
+        ports:
+        - containerPort: 8888
+          name: jupyter
+        - containerPort: 6006
+          name: tensorboard
+        livenessProbe:
+          exec:
+            command:
+            - python3.11
+            - -c
+            - "import protein_sssl; print('OK')"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: protein-data-pvc
+      - name: checkpoints-volume
+        persistentVolumeClaim:
+          claimName: protein-checkpoints-pvc
+      - name: logs-volume
+        emptyDir: {}
+      - name: shm-volume
+        emptyDir:
+          medium: Memory
+          sizeLimit: 8Gi
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: protein-sssl-inference
+  labels:
+    app: protein-sssl
+    component: inference
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: protein-sssl
+      component: inference
+  template:
+    metadata:
+      labels:
+        app: protein-sssl
+        component: inference
+    spec:
+      containers:
+      - name: inference
+        image: protein-sssl:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "2"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "16Gi"
+            cpu: "4"
+            nvidia.com/gpu: 1
+        env:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: MODEL_PATH
+          value: "/app/checkpoints/best_model.pt"
+        - name: BATCH_SIZE
+          value: "8"
+        - name: MAX_SEQUENCE_LENGTH
+          value: "512"
+        volumeMounts:
+        - name: checkpoints-volume
+          mountPath: /app/checkpoints
+          readOnly: true
+        ports:
+        - containerPort: 8000
+          name: api
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: checkpoints-volume
+        persistentVolumeClaim:
+          claimName: protein-checkpoints-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: protein-sssl-training-service
+  labels:
+    app: protein-sssl
+    component: training
+spec:
+  selector:
+    app: protein-sssl
+    component: training
+  ports:
+  - name: jupyter
+    port: 8888
+    targetPort: 8888
+  - name: tensorboard
+    port: 6006
+    targetPort: 6006
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: protein-sssl-inference-service
+  labels:
+    app: protein-sssl
+    component: inference
+spec:
+  selector:
+    app: protein-sssl
+    component: inference
+  ports:
+  - name: api
+    port: 80
+    targetPort: 8000
+  type: LoadBalancer
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: protein-sssl-inference-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: protein-sssl-inference
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

@@ -1,0 +1,160 @@
+# Default values for protein-sssl
+# This is a YAML-formatted file.
+
+replicaCount:
+  training: 1
+  inference: 3
+
+image:
+  repository: ghcr.io/user/protein-sssl-operator
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  training:
+    type: ClusterIP
+    ports:
+      jupyter: 8888
+      tensorboard: 6006
+  inference:
+    type: LoadBalancer
+    port: 80
+    targetPort: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: protein-sssl.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: protein-sssl-tls
+      hosts:
+        - protein-sssl.example.com
+
+resources:
+  training:
+    limits:
+      cpu: "8"
+      memory: 32Gi
+      nvidia.com/gpu: 2
+    requests:
+      cpu: "4" 
+      memory: 16Gi
+      nvidia.com/gpu: 1
+  inference:
+    limits:
+      cpu: "4"
+      memory: 16Gi
+      nvidia.com/gpu: 1
+    requests:
+      cpu: "2"
+      memory: 8Gi
+      nvidia.com/gpu: 1
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+  accelerator: nvidia-tesla-v100
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+affinity: {}
+
+persistence:
+  data:
+    enabled: true
+    storageClass: "fast-ssd"
+    size: 1Ti
+    accessMode: ReadOnlyMany
+  checkpoints:
+    enabled: true
+    storageClass: "fast-ssd"
+    size: 500Gi
+    accessMode: ReadWriteMany
+
+config:
+  environment: production
+  logLevel: INFO
+  batchSize: 8
+  maxSequenceLength: 512
+  modelPath: "/app/checkpoints/best_model.pt"
+  
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRule:
+    enabled: true
+
+secrets:
+  wandb:
+    apiKey: ""
+  huggingface:
+    token: ""
+
+env:
+  - name: CUDA_VISIBLE_DEVICES
+    value: "all"
+  - name: PYTHONPATH
+    value: "/app"
+  - name: OMP_NUM_THREADS
+    value: "1"
+
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from: []
+  egress:
+    - to: []
