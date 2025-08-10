@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  protein-sssl-training:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+    container_name: protein-sssl-training
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0,1,2,3
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - WANDB_MODE=online
+    volumes:
+      - ../data:/app/data:ro
+      - ../experiments:/app/experiments
+      - ../checkpoints:/app/checkpoints
+      - ../logs:/app/logs
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    ports:
+      - "8888:8888"  # Jupyter notebook
+      - "6006:6006"  # TensorBoard
+      - "8000:8000"  # API server
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - protein-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3.11", "-c", "import protein_sssl; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  protein-sssl-inference:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+    container_name: protein-sssl-inference
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_PATH=/app/checkpoints/best_model.pt
+    volumes:
+      - ../checkpoints:/app/checkpoints:ro
+      - ../inference_results:/app/results
+    ports:
+      - "8001:8000"
+    networks:
+      - protein-net
+    command: ["python3.11", "-m", "protein_sssl.api.server", "--port", "8000"]
+    depends_on:
+      - protein-sssl-training
+    restart: unless-stopped
+
+  monitoring:
+    image: grafana/grafana:latest
+    container_name: protein-sssl-monitoring
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=protein_admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks:
+      - protein-net
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: protein-sssl-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - protein-net
+    restart: unless-stopped
+
+networks:
+  protein-net:
+    driver: bridge
+
+volumes:
+  grafana_data:
+  prometheus_data:

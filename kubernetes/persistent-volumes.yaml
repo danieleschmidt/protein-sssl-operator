@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: protein-data-pv
+  labels:
+    type: local
+spec:
+  storageClassName: fast-ssd
+  capacity:
+    storage: 1Ti
+  accessModes:
+    - ReadOnlyMany
+  hostPath:
+    path: "/mnt/protein-data"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: protein-data-pvc
+spec:
+  storageClassName: fast-ssd
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Ti
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: protein-checkpoints-pv
+  labels:
+    type: local
+spec:
+  storageClassName: fast-ssd
+  capacity:
+    storage: 500Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/protein-checkpoints"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: protein-checkpoints-pvc
+spec:
+  storageClassName: fast-ssd
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Gi
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
