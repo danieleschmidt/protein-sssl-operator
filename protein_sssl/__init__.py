@@ -6,6 +6,7 @@ from .data.structure_dataset import StructureDataset
 from .training.ssl_trainer import SSLTrainer
 from .training.folding_trainer import FoldingTrainer
 from .analysis.domain_analysis import MultiScaleAnalyzer, DomainSegmenter
+from .config import ConfigManager, load_config, save_config
 
 __version__ = "0.1.0"
 __author__ = "Daniel Schmidt"
@@ -20,4 +21,7 @@ __all__ = [
     "FoldingTrainer",
     "MultiScaleAnalyzer",
     "DomainSegmenter",
+    "ConfigManager",
+    "load_config",
+    "save_config"
 ]

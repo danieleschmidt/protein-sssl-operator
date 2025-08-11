@@ -79,6 +79,7 @@ Documentation = "https://protein-sssl-operator.readthedocs.io/"
 "Bug Tracker" = "https://github.com/danieleschmidt/protein-sssl-operator/issues"
 
 [project.scripts]
+protein-sssl = "protein_sssl.cli.main:main"
 protein-ssl-pretrain = "scripts.pretrain_ssl:main"
 protein-predict-structure = "scripts.predict_structure:main"
 

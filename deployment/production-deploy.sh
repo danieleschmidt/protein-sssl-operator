@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Production deployment script for protein-sssl-operator
-# This script automates the deployment process with safety checks
+# Production Deployment Script for protein-sssl-operator
+# Terragon Labs - Autonomous SDLC Execution
+# Enhanced with comprehensive deployment automation, monitoring, and safety features
 
 set -euo pipefail
 

@@ -1,5 +1,5 @@
-# Configuration for SSL Pre-training
-# This file defines all parameters for self-supervised learning pre-training
+# SSL Pre-training Configuration
+training_type: ssl
 
 model:
   # Core architecture parameters
