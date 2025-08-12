@@ -1,5 +1,5 @@
-# Configuration for Structure Folding Fine-tuning
-# This file defines parameters for fine-tuning the SSL model on structure prediction
+# Structure Folding Training Configuration
+training_type: folding
 
 model:
   # Base SSL model configuration

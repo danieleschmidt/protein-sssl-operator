@@ -1,0 +1,248 @@
+# ServiceMonitor for Prometheus monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: protein-sssl-monitor
+  namespace: protein-sssl
+  labels:
+    app.kubernetes.io/name: protein-sssl
+    monitoring: enabled
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: protein-sssl
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    honorLabels: true
+  - port: inference-metrics
+    interval: 15s
+    path: /metrics
+    honorLabels: true
+  namespaceSelector:
+    matchNames:
+    - protein-sssl
+
+---
+# PrometheusRule for alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: protein-sssl-alerts
+  namespace: protein-sssl
+  labels:
+    app.kubernetes.io/name: protein-sssl
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: protein-sssl.rules
+    rules:
+    # High error rate alert
+    - alert: ProteinSSLHighErrorRate
+      expr: |
+        (
+          rate(protein_sssl_prediction_errors_total[5m]) /
+          rate(protein_sssl_predictions_total[5m])
+        ) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        service: protein-sssl
+      annotations:
+        summary: "High error rate in protein structure predictions"
+        description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+
+    # High memory usage alert
+    - alert: ProteinSSLHighMemoryUsage
+      expr: |
+        (
+          container_memory_usage_bytes{pod=~"protein-sssl-.*"} /
+          container_spec_memory_limit_bytes{pod=~"protein-sssl-.*"}
+        ) > 0.9
+      for: 10m
+      labels:
+        severity: critical
+        service: protein-sssl
+      annotations:
+        summary: "High memory usage in protein-sssl pods"
+        description: "Memory usage is {{ $value | humanizePercentage }} in pod {{ $labels.pod }}"
+
+    # GPU utilization alerts
+    - alert: ProteinSSLGPUHighUtilization
+      expr: DCGM_FI_DEV_GPU_UTIL > 95
+      for: 15m
+      labels:
+        severity: warning
+        service: protein-sssl
+      annotations:
+        summary: "High GPU utilization"
+        description: "GPU {{ $labels.gpu }} utilization is {{ $value }}% for 15+ minutes"
+
+    - alert: ProteinSSLGPUMemoryHigh
+      expr: |
+        (
+          DCGM_FI_DEV_FB_USED /
+          DCGM_FI_DEV_FB_TOTAL
+        ) > 0.9
+      for: 10m
+      labels:
+        severity: warning
+        service: protein-sssl
+      annotations:
+        summary: "High GPU memory usage"
+        description: "GPU {{ $labels.gpu }} memory usage is {{ $value | humanizePercentage }}"
+
+    # Long-running inference alert
+    - alert: ProteinSSLLongInference
+      expr: histogram_quantile(0.95, rate(protein_sssl_inference_duration_seconds_bucket[10m])) > 300
+      for: 5m
+      labels:
+        severity: warning
+        service: protein-sssl
+      annotations:
+        summary: "Long-running protein structure inference"
+        description: "95th percentile inference time is {{ $value }}s"
+
+    # Pod restart alert
+    - alert: ProteinSSLPodRestarts
+      expr: rate(kube_pod_container_status_restarts_total{pod=~"protein-sssl-.*"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        service: protein-sssl
+      annotations:
+        summary: "Protein-SSL pod restarting"
+        description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes"
+
+    # Training job failure alert
+    - alert: ProteinSSLTrainingJobFailed
+      expr: kube_job_status_failed{job_name=~"protein-sssl-training-.*"} > 0
+      for: 1m
+      labels:
+        severity: critical
+        service: protein-sssl
+      annotations:
+        summary: "Protein-SSL training job failed"
+        description: "Training job {{ $labels.job_name }} has failed"
+
+    # Disk usage alert
+    - alert: ProteinSSLHighDiskUsage
+      expr: |
+        (
+          1 - (
+            node_filesystem_avail_bytes{mountpoint="/data"} /
+            node_filesystem_size_bytes{mountpoint="/data"}
+          )
+        ) > 0.85
+      for: 10m
+      labels:
+        severity: warning
+        service: protein-sssl
+      annotations:
+        summary: "High disk usage on protein-SSL nodes"
+        description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: protein-sssl-dashboard
+  namespace: protein-sssl
+  labels:
+    grafana_dashboard: "1"
+data:
+  dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Protein-SSL Operator Dashboard",
+        "tags": ["protein-sssl", "bioinformatics"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Prediction Requests Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "rate(protein_sssl_predictions_total[5m])",
+                "legendFormat": "Predictions/sec"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Error Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "rate(protein_sssl_prediction_errors_total[5m]) / rate(protein_sssl_predictions_total[5m])",
+                "legendFormat": "Error Rate"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "GPU Utilization",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "DCGM_FI_DEV_GPU_UTIL",
+                "legendFormat": "GPU {{gpu}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Memory Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{pod=~\"protein-sssl-.*\"} / 1024 / 1024",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Inference Duration",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(protein_sssl_inference_duration_seconds_bucket[10m]))",
+                "legendFormat": "95th percentile"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(protein_sssl_inference_duration_seconds_bucket[10m]))",
+                "legendFormat": "50th percentile"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+          }
+        ],
+        "time": {"from": "now-1h", "to": "now"},
+        "refresh": "30s"
+      }
+    }
+
+---
+# PodMonitor for additional metrics collection
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: protein-sssl-pod-monitor
+  namespace: protein-sssl
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: protein-sssl
+  podMetricsEndpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics

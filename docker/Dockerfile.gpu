@@ -1,0 +1,102 @@
+# GPU-Optimized Dockerfile for protein-sssl-operator
+FROM nvidia/cuda:11.8-devel-ubuntu22.04 as builder
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV CUDA_VISIBLE_DEVICES=0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    git \
+    wget \
+    curl \
+    build-essential \
+    cmake \
+    ninja-build \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install wheel
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+# Install PyTorch with CUDA support
+RUN pip3 install torch==2.0.1+cu118 torchvision==0.15.2+cu118 \
+    --index-url https://download.pytorch.org/whl/cu118
+
+# Install CUDA-specific optimizations
+RUN pip3 install \
+    flash-attn==2.0.4 \
+    xformers==0.0.20 \
+    triton==2.0.0 \
+    pynvml \
+    cupy-cuda11x
+
+# Production stage
+FROM nvidia/cuda:11.8-runtime-ubuntu22.04
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV CUDA_VISIBLE_DEVICES=0
+ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6+PTX"
+
+# Create app user
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash appuser
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
+COPY --chown=appuser:appuser . /app/
+
+# Install the package
+RUN pip3 install -e .
+
+# Additional GPU-optimized packages
+RUN pip3 install \
+    einops \
+    transformers[torch] \
+    accelerate \
+    bitsandbytes
+
+# Create necessary directories
+RUN mkdir -p /app/models /app/data /app/logs /app/cache && \
+    chown -R appuser:appuser /app
+
+# Switch to app user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
+    CMD python3 -c "import torch; print('CUDA available:', torch.cuda.is_available()); print('GPU count:', torch.cuda.device_count())" || exit 1
+
+# Expose ports
+EXPOSE 8000 8888 9090
+
+# Default command
+CMD ["python3", "-m", "protein_sssl.cli.main", "--help"]
+
+# Labels
+LABEL org.opencontainers.image.title="protein-sssl-operator-gpu"
+LABEL org.opencontainers.image.description="GPU-optimized protein structure prediction with neural operators"
+LABEL org.opencontainers.image.version="0.1.0"
+LABEL org.opencontainers.image.authors="Daniel Schmidt <daniel@terragonlabs.ai>"
+LABEL org.opencontainers.image.source="https://github.com/danieleschmidt/protein-sssl-operator"
+LABEL org.opencontainers.image.licenses="MIT"
