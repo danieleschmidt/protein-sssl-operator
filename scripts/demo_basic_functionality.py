@@ -95,12 +95,17 @@ def demo_neural_operator():
     print(f"Length: {len(sequence)} residues")
     
     # Forward pass
-    with torch.no_grad():
-        outputs = folding_model(
-            input_ids, 
-            attention_mask, 
-            return_uncertainty=True
-        )
+    try:
+        with torch.no_grad():
+            outputs = folding_model(
+                input_ids, 
+                attention_mask, 
+                return_uncertainty=True
+            )
+    except Exception as e:
+        print(f"❌ Demo failed with error: {str(e)}")
+        print("🔧 Please check implementation and dependencies")
+        return
     
     print(f"Distance logits shape: {outputs['distance_logits'].shape}")
     print(f"Torsion angles shape: {outputs['torsion_angles'].shape}")  

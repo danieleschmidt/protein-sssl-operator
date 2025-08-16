@@ -1,0 +1,21 @@
+HEADER    PREDICTED PROTEIN STRUCTURE
+TITLE     PROTEIN-SSSL-OPERATOR PREDICTION
+MODEL        1
+ATOM      1  CA  ALA A   1       0.138  -0.084   0.037  1.00-14.62           C
+ATOM      2  CA  ALA A   2       0.024   0.133  -0.091  1.00-14.62           C
+ATOM      3  CA  ALA A   3       0.065  -0.059   0.026  1.00-14.62           C
+ATOM      4  CA  ALA A   4      -0.186   0.016   0.015  1.00-14.62           C
+ATOM      5  CA  ALA A   5       0.027   0.127  -0.088  1.00-14.62           C
+ATOM      6  CA  ALA A   6       0.074  -0.073   0.036  1.00-14.62           C
+ATOM      7  CA  ALA A   7      -0.094  -0.045  -0.061  1.00-14.62           C
+ATOM      8  CA  ALA A   8      -0.182   0.007   0.020  1.00-14.62           C
+ATOM      9  CA  ALA A   9      -0.182   0.007   0.020  1.00-14.62           C
+ATOM     10  CA  ALA A  10       0.299   0.006  -0.080  1.00-14.62           C
+ATOM     11  CA  ALA A  11       0.018   0.224   0.105  1.00-14.62           C
+ATOM     12  CA  ALA A  12      -0.001  -0.102   0.140  1.00-14.62           C
+ATOM     13  CA  ALA A  13      -0.068  -0.098  -0.151  1.00-14.62           C
+ATOM     14  CA  ALA A  14      -0.068  -0.098  -0.152  1.00-14.62           C
+ATOM     15  CA  ALA A  15      -0.081   0.079  -0.033  1.00-14.62           C
+ATOM     16  CA  ALA A  16      -0.022  -0.113   0.077  1.00-14.62           C
+ENDMDL
+END

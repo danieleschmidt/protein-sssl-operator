@@ -74,6 +74,10 @@ class PerformanceFormatter(logging.Formatter):
         record.function = record.funcName
         record.line = record.lineno
         
+        # Get the actual message
+        message = record.getMessage()
+        record.message = message
+        
         # Format message
         if self.include_performance:
             fmt = (
@@ -134,7 +138,10 @@ class ProteinSSLLogger:
                  enable_security_filter: bool = True):
         
         self.name = name
-        self.level = getattr(logging, level.upper())
+        # Handle case where level might be a module name instead of level string
+        if '.' in level:
+            level = "INFO"  # Default to INFO if it's a module name
+        self.level = getattr(logging, level.upper(), logging.INFO)
         self.log_dir = Path(log_dir) if log_dir else Path("logs")
         self.format_type = format_type
         self.include_performance = include_performance
