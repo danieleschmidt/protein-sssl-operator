@@ -1,6 +1,15 @@
-import torch
-import torch.nn as nn
-from transformers import AutoModel, AutoConfig
+# Mock torch for Generation 1 testing
+try:
+    import torch
+    import torch.nn as nn
+    from transformers import AutoModel, AutoConfig
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    from ..utils.torch_mock import create_torch_mock, get_mock_nn
+    torch = create_torch_mock()
+    nn = get_mock_nn()
+
 from typing import Dict, List, Optional, Union, Tuple
 import math
 
