@@ -1,6 +1,74 @@
 # Default values for protein-sssl
 # This is a YAML-formatted file.
 
+# Global deployment configuration
+global:
+  # Deployment region and mode
+  region: "us-east-1"
+  zone: "primary"
+  environment: "production"
+  deploymentMode: "active"
+  
+  # Multi-region settings
+  multiRegion:
+    enabled: true
+    primaryRegion: "us-east-1"
+    regions:
+      - name: "us-east-1"
+        zone: "primary"
+        dataResidency: true
+      - name: "eu-west-1"
+        zone: "secondary"
+        dataResidency: true
+    crossRegionReplication: true
+    dataSovereignty: "strict"
+  
+  # Compliance and legal settings
+  compliance:
+    frameworks: ["gdpr", "ccpa", "hipaa", "soc2", "iso27001"]
+    dataClassification: "confidential"
+    auditLogging: true
+    dataRetention:
+      enabled: true
+      defaultPeriodDays: 365
+      autoDelete: true
+    exportControl:
+      enabled: true
+      screening: true
+    
+  # Internationalization settings
+  i18n:
+    enabled: true
+    defaultLanguage: "en"
+    supportedLanguages: ["en", "es", "fr", "de", "ja", "zh", "ar", "pt", "it", "ru"]
+    defaultLocale: "en-US"
+    rtlSupport: true
+    
+  # Accessibility settings
+  accessibility:
+    enabled: true
+    wcagLevel: "AA"
+    screenReaderSupport: true
+    keyboardNavigation: true
+    highContrast: true
+    
+  # Cultural adaptation settings
+  cultural:
+    enabled: true
+    regions: ["western_europe", "north_america", "east_asia", "southeast_asia"]
+    scientificNotation: "decimal_point"
+    adaptColors: true
+    adaptCommunication: true
+    
+  # Security settings
+  security:
+    encryption:
+      atRest: true
+      inTransit: true
+      keyRotation: true
+    networkPolicies: true
+    podSecurityStandards: "restricted"
+    
 replicaCount:
   training: 1
   inference: 3
@@ -137,6 +205,21 @@ env:
     value: "/app"
   - name: OMP_NUM_THREADS
     value: "1"
+  # Global deployment environment variables
+  - name: GLOBAL_DEPLOYMENT_REGION
+    value: "{{ .Values.global.region }}"
+  - name: GLOBAL_DEPLOYMENT_ZONE
+    value: "{{ .Values.global.zone }}"
+  - name: COMPLIANCE_FRAMEWORKS
+    value: "{{ join \",\" .Values.global.compliance.frameworks }}"
+  - name: SUPPORTED_LANGUAGES
+    value: "{{ join \",\" .Values.global.i18n.supportedLanguages }}"
+  - name: DEFAULT_LOCALE
+    value: "{{ .Values.global.i18n.defaultLocale }}"
+  - name: WCAG_LEVEL
+    value: "{{ .Values.global.accessibility.wcagLevel }}"
+  - name: DATA_CLASSIFICATION
+    value: "{{ .Values.global.compliance.dataClassification }}"
 
 probes:
   liveness:

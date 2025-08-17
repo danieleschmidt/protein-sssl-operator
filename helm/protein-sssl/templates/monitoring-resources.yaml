@@ -1,0 +1,527 @@
+{{- if .Values.monitoring.enabled }}
+---
+# Compliance monitoring service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-monitoring
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: monitoring
+automountServiceAccountToken: true
+
+---
+# Monitoring RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-monitoring
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "events"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions", "networking.k8s.io"]
+  resources: ["ingresses", "networkpolicies"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies", "poddisruptionbudgets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "protein-sssl.fullname" . }}-monitoring
+subjects:
+- kind: ServiceAccount
+  name: {{ include "protein-sssl.fullname" . }}-monitoring
+  namespace: {{ .Release.Namespace }}
+
+---
+# Compliance monitoring configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-monitoring-config
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: monitoring
+data:
+  monitoring-rules.yaml: |
+    # Compliance monitoring rules
+    rules:
+      data_retention_check:
+        name: "Data Retention Compliance"
+        violation_type: "data_retention"
+        regulation: "{{ join "," .Values.global.compliance.frameworks }}"
+        check_interval_seconds: 3600
+        severity: "high"
+        enabled: true
+        alert_channels: ["email", "slack"]
+      
+      cross_border_transfer_check:
+        name: "Cross-Border Data Transfer Compliance"
+        violation_type: "cross_border_transfer"
+        regulation: "gdpr,pdpa"
+        check_interval_seconds: 300
+        severity: "critical"
+        enabled: true
+        alert_channels: ["email", "pagerduty"]
+        
+      encryption_check:
+        name: "Encryption Compliance"
+        violation_type: "encryption_failure"
+        regulation: "soc2,iso27001"
+        check_interval_seconds: 600
+        severity: "high"
+        enabled: {{ .Values.global.security.encryption.atRest }}
+        alert_channels: ["email", "slack"]
+        
+      consent_check:
+        name: "Consent Compliance"
+        violation_type: "consent_violation"
+        regulation: "gdpr,ccpa"
+        check_interval_seconds: 1800
+        severity: "medium"
+        enabled: {{ has "gdpr" .Values.global.compliance.frameworks or has "ccpa" .Values.global.compliance.frameworks }}
+        alert_channels: ["email"]
+        
+      {{- if .Values.global.compliance.exportControl.enabled }}
+      export_control_check:
+        name: "Export Control Compliance"
+        violation_type: "export_control"
+        regulation: "ear,itar"
+        check_interval_seconds: 900
+        severity: "critical"
+        enabled: true
+        alert_channels: ["email", "pagerduty"]
+      {{- end }}
+      
+      {{- if .Values.global.multiRegion.enabled }}
+      data_sovereignty_check:
+        name: "Data Sovereignty Compliance"
+        violation_type: "data_sovereignty"
+        regulation: "{{ join "," .Values.global.compliance.frameworks }}"
+        check_interval_seconds: 600
+        severity: "high"
+        enabled: true
+        alert_channels: ["email", "slack"]
+      {{- end }}
+      
+      {{- if .Values.global.accessibility.enabled }}
+      accessibility_compliance_check:
+        name: "Accessibility Compliance"
+        violation_type: "accessibility_violation"
+        regulation: "wcag,ada"
+        check_interval_seconds: 7200
+        severity: "medium"
+        enabled: true
+        alert_channels: ["email"]
+      {{- end }}
+
+  alert-channels.yaml: |
+    # Alert notification channels
+    channels:
+      email:
+        type: "email"
+        name: "Email Notifications"
+        enabled: true
+        configuration:
+          smtp_server: "smtp.company.com"
+          smtp_port: 587
+          use_tls: true
+          from_email: "compliance-alerts@company.com"
+          to_email: "compliance-team@company.com"
+        severity_filter: ["medium", "high", "critical"]
+      
+      slack:
+        type: "slack"
+        name: "Slack Notifications"
+        enabled: false  # Set to true and configure webhook_url
+        configuration:
+          webhook_url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+        severity_filter: ["high", "critical"]
+      
+      pagerduty:
+        type: "pagerduty"
+        name: "PagerDuty Alerts"
+        enabled: false  # Set to true and configure routing_key
+        configuration:
+          routing_key: "YOUR_PAGERDUTY_ROUTING_KEY"
+        severity_filter: ["critical"]
+      
+      webhook:
+        type: "webhook"
+        name: "Generic Webhook"
+        enabled: false
+        configuration:
+          url: "https://your-webhook-endpoint.com/alerts"
+          headers:
+            Authorization: "Bearer YOUR_TOKEN"
+          timeout: 30
+        severity_filter: ["high", "critical"]
+
+  compliance-thresholds.yaml: |
+    # Compliance monitoring thresholds
+    thresholds:
+      compliance_score:
+        minimum: 95.0
+        warning: 98.0
+        critical: 90.0
+      
+      data_retention_violations:
+        warning: 5
+        critical: 20
+      
+      cross_border_violations:
+        warning: 1
+        critical: 5
+      
+      encryption_failures:
+        warning: 2
+        critical: 10
+      
+      consent_violations:
+        warning: 10
+        critical: 50
+        
+      response_time_hours:
+        data_subject_requests: 72  # 3 days warning
+        breach_notifications: 24   # 1 day critical
+        
+      {{- if .Values.global.multiRegion.enabled }}
+      regional_sync_lag_minutes:
+        warning: 15
+        critical: 60
+      {{- end }}
+
+---
+# Compliance monitoring deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance-monitor
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "protein-sssl.selectorLabels" . | nindent 6 }}
+      component: compliance-monitor
+  template:
+    metadata:
+      labels:
+        {{- include "protein-sssl.selectorLabels" . | nindent 8 }}
+        component: compliance-monitor
+      annotations:
+        {{- include "protein-sssl.complianceAnnotations" . | nindent 8 }}
+        {{- include "protein-sssl.regionalRouting" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "protein-sssl.fullname" . }}-monitoring
+      securityContext:
+        {{- include "protein-sssl.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: compliance-monitor
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "-m", "protein_sssl.utils.compliance_monitoring"]
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: metrics
+          containerPort: 9090
+        env:
+        - name: CURRENT_REGION
+          value: {{ .Values.global.region }}
+        - name: COMPLIANCE_FRAMEWORKS
+          value: "{{ join "," .Values.global.compliance.frameworks }}"
+        - name: DATA_CLASSIFICATION
+          value: {{ .Values.global.compliance.dataClassification }}
+        - name: MONITORING_INTERVAL
+          value: "300"  # 5 minutes
+        - name: ALERT_ESCALATION_HOURS
+          value: "24"
+        {{- if .Values.global.multiRegion.enabled }}
+        - name: MULTI_REGION_ENABLED
+          value: "true"
+        - name: PRIMARY_REGION
+          value: {{ .Values.global.multiRegion.primaryRegion }}
+        {{- end }}
+        volumeMounts:
+        - name: monitoring-config
+          mountPath: /app/config/monitoring
+          readOnly: true
+        - name: compliance-config
+          mountPath: /app/config/compliance
+          readOnly: true
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          {{- include "protein-sssl.securityContext" . | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: monitoring-config
+        configMap:
+          name: {{ include "protein-sssl.fullname" . }}-monitoring-config
+      - name: compliance-config
+        configMap:
+          name: {{ include "protein-sssl.fullname" . }}-global-config
+
+---
+# Compliance monitoring service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance-monitor
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: monitoring
+spec:
+  selector:
+    {{- include "protein-sssl.selectorLabels" . | nindent 4 }}
+    component: compliance-monitor
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+
+---
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+# ServiceMonitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance-monitor
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: monitoring
+spec:
+  selector:
+    matchLabels:
+      {{- include "protein-sssl.selectorLabels" . | nindent 6 }}
+      component: compliance-monitor
+  endpoints:
+  - port: metrics
+    interval: {{ .Values.monitoring.serviceMonitor.interval | default "30s" }}
+    path: /metrics
+    scheme: http
+    {{- if .Values.monitoring.serviceMonitor.relabelings }}
+    relabelings:
+      {{- toYaml .Values.monitoring.serviceMonitor.relabelings | nindent 4 }}
+    {{- end }}
+{{- end }}
+
+---
+{{- if .Values.monitoring.prometheusRule.enabled }}
+# PrometheusRule for alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance-alerts
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: monitoring
+spec:
+  groups:
+  - name: protein-sssl-compliance
+    interval: 60s
+    rules:
+    - alert: ComplianceScoreLow
+      expr: compliance_score < 95
+      for: 5m
+      labels:
+        severity: warning
+        component: compliance
+      annotations:
+        summary: "Compliance score below threshold"
+        description: "Overall compliance score is {{ "{{ $value }}" }}%, below the 95% threshold"
+    
+    - alert: ComplianceScoreCritical
+      expr: compliance_score < 90
+      for: 2m
+      labels:
+        severity: critical
+        component: compliance
+      annotations:
+        summary: "Critical compliance score"
+        description: "Overall compliance score is {{ "{{ $value }}" }}%, below the critical 90% threshold"
+    
+    - alert: DataRetentionViolations
+      expr: data_retention_violations > 5
+      for: 10m
+      labels:
+        severity: warning
+        component: compliance
+      annotations:
+        summary: "Multiple data retention violations"
+        description: "{{ "{{ $value }}" }} data retention violations detected"
+    
+    - alert: CrossBorderTransferViolation
+      expr: increase(cross_border_violations_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: critical
+        component: compliance
+      annotations:
+        summary: "Cross-border transfer violation detected"
+        description: "Unauthorized cross-border data transfer detected"
+    
+    - alert: EncryptionFailure
+      expr: encryption_failures > 2
+      for: 5m
+      labels:
+        severity: high
+        component: compliance
+      annotations:
+        summary: "Encryption compliance failure"
+        description: "{{ "{{ $value }}" }} encryption failures detected"
+        
+    - alert: ConsentViolations
+      expr: consent_violations > 10
+      for: 15m
+      labels:
+        severity: warning
+        component: compliance
+      annotations:
+        summary: "Multiple consent violations"
+        description: "{{ "{{ $value }}" }} consent violations detected"
+    
+    {{- if .Values.global.compliance.exportControl.enabled }}
+    - alert: ExportControlViolation
+      expr: increase(export_control_violations_total[1m]) > 0
+      for: 0m
+      labels:
+        severity: critical
+        component: compliance
+      annotations:
+        summary: "Export control violation detected"
+        description: "Export control violation requires immediate attention"
+    {{- end }}
+    
+    {{- if .Values.global.multiRegion.enabled }}
+    - alert: RegionalSyncLag
+      expr: regional_sync_lag_minutes > 15
+      for: 5m
+      labels:
+        severity: warning
+        component: compliance
+      annotations:
+        summary: "Regional synchronization lag"
+        description: "Regional data sync lag is {{ "{{ $value }}" }} minutes"
+    
+    - alert: DataSovereigntyViolation
+      expr: increase(data_sovereignty_violations_total[1m]) > 0
+      for: 0m
+      labels:
+        severity: high
+        component: compliance
+      annotations:
+        summary: "Data sovereignty violation"
+        description: "Data sovereignty violation detected - data may be in wrong jurisdiction"
+    {{- end }}
+    
+    - alert: ComplianceMonitorDown
+      expr: up{job="protein-sssl-compliance-monitor"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        component: monitoring
+      annotations:
+        summary: "Compliance monitor is down"
+        description: "Compliance monitoring system is not responding"
+{{- end }}
+
+---
+# Compliance dashboard configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-dashboard-config
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: monitoring
+data:
+  grafana-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Protein SSSL Compliance Dashboard",
+        "tags": ["compliance", "protein-sssl"],
+        "timezone": "UTC",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Overall Compliance Score",
+            "type": "singlestat",
+            "targets": [
+              {
+                "expr": "compliance_score",
+                "legendFormat": "Compliance Score"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Active Violations by Type",
+            "type": "piechart",
+            "targets": [
+              {
+                "expr": "sum by (violation_type) (active_violations)",
+                "legendFormat": "{{ "{{ violation_type }}" }}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Compliance Violations Over Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(compliance_violations_total[5m])",
+                "legendFormat": "Violations/sec"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+          }
+        ],
+        "time": {
+          "from": "now-24h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }
+{{- end }}

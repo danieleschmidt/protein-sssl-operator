@@ -1,0 +1,283 @@
+{{- if .Values.global.compliance }}
+---
+# Compliance monitoring service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: compliance
+automountServiceAccountToken: true
+
+---
+# Compliance monitoring RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "protein-sssl.fullname" . }}-compliance
+subjects:
+- kind: ServiceAccount
+  name: {{ include "protein-sssl.fullname" . }}-compliance
+  namespace: {{ .Release.Namespace }}
+
+---
+# Data retention policy ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-data-retention
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: compliance
+data:
+  retention-policies.yaml: |
+    {{- if has "gdpr" .Values.global.compliance.frameworks }}
+    gdpr_personal_data:
+      name: "GDPR Personal Data Retention"
+      jurisdiction: "EU"
+      retentionPeriodDays: {{ .Values.global.compliance.dataRetention.defaultPeriodDays }}
+      legalBasis: "Data protection law compliance"
+      automatedDeletion: {{ .Values.global.compliance.dataRetention.autoDelete }}
+      auditTrailRequired: true
+    {{- end }}
+    
+    {{- if has "ccpa" .Values.global.compliance.frameworks }}
+    ccpa_personal_info:
+      name: "CCPA Personal Information Retention"
+      jurisdiction: "CA"
+      retentionPeriodDays: {{ .Values.global.compliance.dataRetention.defaultPeriodDays }}
+      legalBasis: "CCPA compliance"
+      automatedDeletion: {{ .Values.global.compliance.dataRetention.autoDelete }}
+      optOutRights: true
+    {{- end }}
+    
+    {{- if has "hipaa" .Values.global.compliance.frameworks }}
+    hipaa_phi_data:
+      name: "HIPAA PHI Data Retention"
+      jurisdiction: "US"
+      retentionPeriodDays: 2555  # 7 years
+      legalBasis: "HIPAA compliance"
+      automatedDeletion: false  # Requires manual review
+      encryptionRequired: true
+    {{- end }}
+    
+    audit_logs:
+      name: "Global Audit Logs Retention"
+      jurisdiction: "GLOBAL"
+      retentionPeriodDays: 2555  # 7 years
+      legalBasis: "Audit and compliance requirements"
+      automatedDeletion: {{ .Values.global.compliance.dataRetention.autoDelete }}
+      auditTrailRequired: true
+
+---
+{{- if .Values.global.compliance.auditLogging }}
+# Audit logging configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-audit-config
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: compliance
+data:
+  audit-policy.yaml: |
+    apiVersion: audit.k8s.io/v1
+    kind: Policy
+    omitStages:
+      - RequestReceived
+    rules:
+    # Log all requests to compliance-related resources
+    - level: RequestResponse
+      namespaces: [{{ .Release.Namespace }}]
+      resources:
+      - group: ""
+        resources: ["secrets", "configmaps"]
+      - group: "apps"
+        resources: ["deployments"]
+      omitStages:
+        - RequestReceived
+    
+    # Log all access to personal data endpoints
+    - level: Request
+      namespaces: [{{ .Release.Namespace }}]
+      verbs: ["get", "list", "create", "update", "delete"]
+      resources:
+      - group: ""
+        resources: ["pods/log", "pods/exec"]
+    
+    # Log compliance violations
+    - level: RequestResponse
+      namespaces: [{{ .Release.Namespace }}]
+      verbs: ["create", "update", "delete"]
+      resources:
+      - group: "policy"
+        resources: ["podsecuritypolicies"]
+      - group: "networking.k8s.io"
+        resources: ["networkpolicies"]
+{{- end }}
+
+---
+{{- if .Values.global.security.networkPolicies }}
+# Network policy for compliance isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-compliance-isolation
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: compliance
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "protein-sssl.selectorLabels" . | nindent 6 }}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    # Allow ingress from same namespace
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Release.Namespace }}
+    # Allow ingress from monitoring namespace
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    # Allow ingress from specific compliance tools
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: compliance
+  egress:
+  - to:
+    # Allow egress to compliance databases
+    - namespaceSelector:
+        matchLabels:
+          name: compliance-db
+  - to:
+    # Allow egress to audit logging systems
+    - namespaceSelector:
+        matchLabels:
+          name: audit-logging
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow HTTPS for external compliance APIs
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+{{- end }}
+
+---
+{{- if has "soc2" .Values.global.compliance.frameworks }}
+# SOC 2 monitoring configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-soc2-config
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: compliance
+data:
+  soc2-controls.yaml: |
+    trustCriteria:
+      security:
+        accessControl: true
+        encryptionAtRest: {{ .Values.global.security.encryption.atRest }}
+        encryptionInTransit: {{ .Values.global.security.encryption.inTransit }}
+        vulnerabilityManagement: true
+        incidentResponse: true
+        changeManagement: true
+        monitoringLogging: true
+      
+      availability:
+        uptimeTarget: 99.9
+        monitoringEnabled: true
+        backupProcedures: true
+        disasterRecovery: {{ .Values.global.multiRegion.enabled }}
+      
+      processingIntegrity:
+        dataValidation: true
+        errorHandling: true
+        dataBackup: true
+        qualityControls: true
+      
+      confidentiality:
+        dataClassification: {{ .Values.global.compliance.dataClassification }}
+        accessControls: true
+        dataHandling: true
+        disposalProcedures: true
+      
+      privacy:
+        privacyNotice: true
+        consentManagement: true
+        dataSubjectRights: true
+        crossBorderTransfers: {{ .Values.global.multiRegion.crossRegionReplication }}
+{{- end }}
+
+---
+{{- if .Values.global.compliance.exportControl.enabled }}
+# Export control configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-export-control
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: compliance
+data:
+  export-control-config.yaml: |
+    screening:
+      enabled: {{ .Values.global.compliance.exportControl.screening }}
+      restrictedCountries:
+        - "IR"  # Iran
+        - "KP"  # North Korea
+        - "SY"  # Syria
+        - "CU"  # Cuba
+      
+    technologyClassification:
+      defaultECCN: "EAR99"
+      aiMlTechnology: "3E001"
+      cryptographicSoftware: "5D002"
+      proteinModelingSoftware: "1E001"
+    
+    complianceChecks:
+      partyScreening: true
+      technologyReview: true
+      destinationApproval: true
+      documentationRequired: true
+    
+    regions:
+      {{- range .Values.global.multiRegion.regions }}
+      {{ .name }}:
+        exportControlJurisdiction: {{ if hasPrefix "us-" .name }}"US"{{ else if hasPrefix "eu-" .name }}"EU"{{ else }}"OTHER"{{ end }}
+        licenseRequired: {{ if hasPrefix "us-" .name }}true{{ else }}false{{ end }}
+      {{- end }}
+{{- end }}
+{{- end }}
