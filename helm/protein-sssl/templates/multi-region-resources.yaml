@@ -1,0 +1,360 @@
+{{- if .Values.global.multiRegion.enabled }}
+---
+# Multi-region deployment configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-multi-region-config
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: multi-region
+data:
+  multi-region.yaml: |
+    deployment:
+      primaryRegion: {{ .Values.global.multiRegion.primaryRegion }}
+      currentRegion: {{ .Values.global.region }}
+      crossRegionReplication: {{ .Values.global.multiRegion.crossRegionReplication }}
+      dataSovereignty: {{ .Values.global.multiRegion.dataSovereignty }}
+    
+    regions:
+      {{- range .Values.global.multiRegion.regions }}
+      {{ .name }}:
+        zone: {{ .zone }}
+        dataResidency: {{ .dataResidency }}
+        isPrimary: {{ eq .zone "primary" }}
+        endpoint: {{ .name }}.{{ $.Values.global.region }}.protein-sssl.com
+        {{- if eq .zone "primary" }}
+        readWrite: true
+        {{- else }}
+        readWrite: false
+        {{- end }}
+        
+        # Regional compliance requirements
+        compliance:
+          {{- if or (hasPrefix "us-" .name) (hasPrefix "ca-" .name) }}
+          jurisdiction: "NORTH_AMERICA"
+          frameworks: ["ccpa", "pipeda"]
+          dataResidency: "US_CA_ONLY"
+          {{- else if hasPrefix "eu-" .name }}
+          jurisdiction: "EUROPEAN_UNION"
+          frameworks: ["gdpr"]
+          dataResidency: "EU_EEA_ONLY"
+          {{- else if hasPrefix "asia-" .name }}
+          jurisdiction: "ASIA_PACIFIC"
+          frameworks: ["pdpa"]
+          dataResidency: "ASIA_PACIFIC_ONLY"
+          {{- else }}
+          jurisdiction: "OTHER"
+          frameworks: ["general"]
+          dataResidency: "LOCAL_ONLY"
+          {{- end }}
+        
+        # Regional storage configuration
+        storage:
+          {{- if .dataResidency }}
+          encryptionRequired: true
+          keyManagement: "regional"
+          crossBorderReplication: false
+          {{- else }}
+          encryptionRequired: {{ $.Values.global.security.encryption.atRest }}
+          keyManagement: "global"
+          crossBorderReplication: {{ $.Values.global.multiRegion.crossRegionReplication }}
+          {{- end }}
+      {{- end }}
+    
+    dataResidencyRules:
+      personalData:
+        retentionPeriodDays: {{ .Values.global.compliance.dataRetention.defaultPeriodDays }}
+        crossBorderTransferAllowed: {{ .Values.global.multiRegion.crossRegionReplication }}
+        encryptionRequired: true
+        auditingRequired: {{ .Values.global.compliance.auditLogging }}
+      
+      researchData:
+        retentionPeriodDays: 2555  # 7 years
+        crossBorderTransferAllowed: true
+        encryptionRequired: true
+        collaborationAllowed: true
+      
+      systemData:
+        retentionPeriodDays: 90
+        crossBorderTransferAllowed: true
+        encryptionRequired: false
+        auditingRequired: false
+
+---
+{{- if .Values.global.multiRegion.crossRegionReplication }}
+# Cross-region replication service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-cross-region-sync
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: multi-region
+spec:
+  selector:
+    {{- include "protein-sssl.selectorLabels" . | nindent 4 }}
+    component: cross-region-sync
+  ports:
+  - name: sync
+    port: 8080
+    targetPort: 8080
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+
+---
+# Cross-region sync deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-cross-region-sync
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: multi-region
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "protein-sssl.selectorLabels" . | nindent 6 }}
+      component: cross-region-sync
+  template:
+    metadata:
+      labels:
+        {{- include "protein-sssl.selectorLabels" . | nindent 8 }}
+        component: cross-region-sync
+    spec:
+      serviceAccountName: {{ include "protein-sssl.serviceAccountName" . }}
+      containers:
+      - name: cross-region-sync
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "-m", "protein_sssl.utils.multi_region_sync"]
+        ports:
+        - name: sync
+          containerPort: 8080
+        - name: metrics
+          containerPort: 9090
+        env:
+        - name: CURRENT_REGION
+          value: {{ .Values.global.region }}
+        - name: PRIMARY_REGION
+          value: {{ .Values.global.multiRegion.primaryRegion }}
+        - name: REGIONS_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "protein-sssl.fullname" . }}-multi-region-config
+              key: multi-region.yaml
+        - name: DATA_SOVEREIGNTY_LEVEL
+          value: {{ .Values.global.multiRegion.dataSovereignty }}
+        volumeMounts:
+        - name: multi-region-config
+          mountPath: /app/config/multi-region
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: sync
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: sync
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: multi-region-config
+        configMap:
+          name: {{ include "protein-sssl.fullname" . }}-multi-region-config
+{{- end }}
+
+---
+# Regional failover configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-failover-config
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: multi-region
+data:
+  failover-policy.yaml: |
+    primary:
+      region: {{ .Values.global.multiRegion.primaryRegion }}
+      healthCheckInterval: 30s
+      failoverThreshold: 3
+    
+    failoverSequence:
+      {{- $primaryRegion := .Values.global.multiRegion.primaryRegion }}
+      {{- range .Values.global.multiRegion.regions }}
+      {{- if ne .name $primaryRegion }}
+      - region: {{ .name }}
+        priority: {{ if eq .zone "secondary" }}1{{ else }}2{{ end }}
+        readinessCheck: true
+        dataConsistencyCheck: {{ .dataResidency }}
+      {{- end }}
+      {{- end }}
+    
+    dataConsistency:
+      replicationLag: 5s
+      consistencyLevel: "eventual"
+      conflictResolution: "last-write-wins"
+    
+    notifications:
+      - type: "email"
+        endpoint: "ops@company.com"
+      - type: "webhook"
+        endpoint: "https://alerting.company.com/webhook"
+      - type: "pagerduty"
+        endpoint: "https://events.pagerduty.com/integration/{{ .Values.global.region }}"
+
+---
+{{- if eq .Values.global.region .Values.global.multiRegion.primaryRegion }}
+# Regional coordination service (only in primary region)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-region-coordinator
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: multi-region
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "protein-sssl.selectorLabels" . | nindent 6 }}
+      component: region-coordinator
+  template:
+    metadata:
+      labels:
+        {{- include "protein-sssl.selectorLabels" . | nindent 8 }}
+        component: region-coordinator
+    spec:
+      serviceAccountName: {{ include "protein-sssl.serviceAccountName" . }}
+      containers:
+      - name: region-coordinator
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "-m", "protein_sssl.utils.region_coordinator"]
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: grpc
+          containerPort: 9090
+        env:
+        - name: COORDINATOR_MODE
+          value: "primary"
+        - name: REGIONS_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "protein-sssl.fullname" . }}-multi-region-config
+              key: multi-region.yaml
+        - name: FAILOVER_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "protein-sssl.fullname" . }}-failover-config
+              key: failover-policy.yaml
+        volumeMounts:
+        - name: region-configs
+          mountPath: /app/config/regions
+          readOnly: true
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: region-configs
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "protein-sssl.fullname" . }}-multi-region-config
+          - configMap:
+              name: {{ include "protein-sssl.fullname" . }}-failover-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-region-coordinator
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: multi-region
+spec:
+  selector:
+    {{- include "protein-sssl.selectorLabels" . | nindent 4 }}
+    component: region-coordinator
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: grpc
+    port: 9090
+    targetPort: 9090
+{{- end }}
+
+---
+# Data residency enforcement network policy
+{{- if .Values.global.security.networkPolicies }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-data-residency
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: multi-region
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "protein-sssl.selectorLabels" . | nindent 6 }}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow communication within current region
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          region: {{ .Values.global.region }}
+  {{- if .Values.global.multiRegion.crossRegionReplication }}
+  # Allow cross-region communication for replication
+  {{- range .Values.global.multiRegion.regions }}
+  {{- if ne .name $.Values.global.region }}
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          region: {{ .name }}
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS only for cross-region
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+{{- end }}
+{{- end }}

@@ -1,0 +1,213 @@
+{{- if .Values.global }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "protein-sssl.fullname" . }}-global-config
+  labels:
+    {{- include "protein-sssl.labels" . | nindent 4 }}
+    component: global-config
+data:
+  # Global deployment configuration
+  global-deployment.yaml: |
+    deployment:
+      id: {{ include "protein-sssl.fullname" . }}-{{ .Values.global.region }}
+      name: {{ include "protein-sssl.fullname" . }}
+      region: {{ .Values.global.region }}
+      zone: {{ .Values.global.zone }}
+      environment: {{ .Values.global.environment }}
+      mode: {{ .Values.global.deploymentMode }}
+    
+    multiRegion:
+      enabled: {{ .Values.global.multiRegion.enabled }}
+      primaryRegion: {{ .Values.global.multiRegion.primaryRegion }}
+      {{- if .Values.global.multiRegion.regions }}
+      regions:
+        {{- toYaml .Values.global.multiRegion.regions | nindent 8 }}
+      {{- end }}
+      crossRegionReplication: {{ .Values.global.multiRegion.crossRegionReplication }}
+      dataSovereignty: {{ .Values.global.multiRegion.dataSovereignty }}
+    
+    compliance:
+      frameworks:
+        {{- range .Values.global.compliance.frameworks }}
+        - {{ . }}
+        {{- end }}
+      dataClassification: {{ .Values.global.compliance.dataClassification }}
+      auditLogging: {{ .Values.global.compliance.auditLogging }}
+      dataRetention:
+        enabled: {{ .Values.global.compliance.dataRetention.enabled }}
+        defaultPeriodDays: {{ .Values.global.compliance.dataRetention.defaultPeriodDays }}
+        autoDelete: {{ .Values.global.compliance.dataRetention.autoDelete }}
+      exportControl:
+        enabled: {{ .Values.global.compliance.exportControl.enabled }}
+        screening: {{ .Values.global.compliance.exportControl.screening }}
+    
+    {{- if .Values.global.i18n.enabled }}
+    i18n:
+      enabled: {{ .Values.global.i18n.enabled }}
+      defaultLanguage: {{ .Values.global.i18n.defaultLanguage }}
+      supportedLanguages:
+        {{- range .Values.global.i18n.supportedLanguages }}
+        - {{ . }}
+        {{- end }}
+      defaultLocale: {{ .Values.global.i18n.defaultLocale }}
+      rtlSupport: {{ .Values.global.i18n.rtlSupport }}
+    {{- end }}
+    
+    {{- if .Values.global.accessibility.enabled }}
+    accessibility:
+      enabled: {{ .Values.global.accessibility.enabled }}
+      wcagLevel: {{ .Values.global.accessibility.wcagLevel }}
+      screenReaderSupport: {{ .Values.global.accessibility.screenReaderSupport }}
+      keyboardNavigation: {{ .Values.global.accessibility.keyboardNavigation }}
+      highContrast: {{ .Values.global.accessibility.highContrast }}
+    {{- end }}
+    
+    {{- if .Values.global.cultural.enabled }}
+    cultural:
+      enabled: {{ .Values.global.cultural.enabled }}
+      regions:
+        {{- range .Values.global.cultural.regions }}
+        - {{ . }}
+        {{- end }}
+      scientificNotation: {{ .Values.global.cultural.scientificNotation }}
+      adaptColors: {{ .Values.global.cultural.adaptColors }}
+      adaptCommunication: {{ .Values.global.cultural.adaptCommunication }}
+    {{- end }}
+    
+    security:
+      encryption:
+        atRest: {{ .Values.global.security.encryption.atRest }}
+        inTransit: {{ .Values.global.security.encryption.inTransit }}
+        keyRotation: {{ .Values.global.security.encryption.keyRotation }}
+      networkPolicies: {{ .Values.global.security.networkPolicies }}
+      podSecurityStandards: {{ .Values.global.security.podSecurityStandards }}
+
+  # Compliance configuration
+  compliance-config.yaml: |
+    {{- if .Values.global.compliance.frameworks }}
+    gdpr:
+      enabled: {{ has "gdpr" .Values.global.compliance.frameworks }}
+      dataRetentionDays: {{ .Values.global.compliance.dataRetention.defaultPeriodDays }}
+      consentRequired: true
+      crossBorderTransfers: {{ .Values.global.multiRegion.enabled }}
+    
+    ccpa:
+      enabled: {{ has "ccpa" .Values.global.compliance.frameworks }}
+      dataRetentionDays: {{ .Values.global.compliance.dataRetention.defaultPeriodDays }}
+      optOutMechanism: true
+    
+    hipaa:
+      enabled: {{ has "hipaa" .Values.global.compliance.frameworks }}
+      dataRetentionDays: 2555  # 7 years
+      breachNotificationHours: 1440  # 60 days
+      encryptionRequired: true
+    
+    soc2:
+      enabled: {{ has "soc2" .Values.global.compliance.frameworks }}
+      auditFrequency: "annual"
+      securityControls: true
+      availabilityMonitoring: true
+    
+    iso27001:
+      enabled: {{ has "iso27001" .Values.global.compliance.frameworks }}
+      informationSecurityPolicy: true
+      riskAssessment: true
+      incidentManagement: true
+    {{- end }}
+
+  # Regional configuration
+  regional-config.yaml: |
+    {{- if .Values.global.multiRegion.enabled }}
+    {{- range .Values.global.multiRegion.regions }}
+    {{ .name }}:
+      zone: {{ .zone }}
+      dataResidency: {{ .dataResidency }}
+      {{- if eq .zone "primary" }}
+      isPrimary: true
+      {{- else }}
+      isPrimary: false
+      {{- end }}
+      compliance:
+        {{- if or (hasPrefix "us-" .name) (hasPrefix "ca-" .name) }}
+        frameworks: ["ccpa", "pipeda"]
+        {{- else if hasPrefix "eu-" .name }}
+        frameworks: ["gdpr"]
+        {{- else if hasPrefix "asia-" .name }}
+        frameworks: ["pdpa"]
+        {{- else }}
+        frameworks: ["general"]
+        {{- end }}
+    {{- end }}
+    {{- end }}
+
+  # Accessibility configuration
+  {{- if .Values.global.accessibility.enabled }}
+  accessibility-config.yaml: |
+    wcag:
+      level: {{ .Values.global.accessibility.wcagLevel }}
+      guidelines:
+        - "1.1.1"  # Non-text Content
+        - "1.4.3"  # Contrast (Minimum)
+        - "2.1.1"  # Keyboard
+        - "2.4.3"  # Focus Order
+        - "3.1.1"  # Language of Page
+        - "4.1.1"  # Parsing
+    
+    features:
+      screenReaderSupport: {{ .Values.global.accessibility.screenReaderSupport }}
+      keyboardNavigation: {{ .Values.global.accessibility.keyboardNavigation }}
+      highContrast: {{ .Values.global.accessibility.highContrast }}
+      
+    themes:
+      default:
+        colors:
+          primary: "#007bff"
+          success: "#28a745"
+          warning: "#ffc107"
+          danger: "#dc3545"
+      
+      {{- if .Values.global.accessibility.highContrast }}
+      highContrast:
+        colors:
+          primary: "#ffffff"
+          secondary: "#ffff00"
+          background: "#000000"
+          text: "#ffffff"
+      {{- end }}
+  {{- end }}
+
+  # Cultural adaptation configuration
+  {{- if .Values.global.cultural.enabled }}
+  cultural-config.yaml: |
+    {{- range .Values.global.cultural.regions }}
+    {{ . }}:
+      scientificNotation: {{ $.Values.global.cultural.scientificNotation }}
+      {{- if eq . "western_europe" }}
+      numberFormat: "decimal_comma"
+      dateFormat: "DD/MM/YYYY"
+      colors:
+        primary: "#007bff"
+        success: "#28a745"
+      {{- else if eq . "north_america" }}
+      numberFormat: "decimal_point"
+      dateFormat: "MM/DD/YYYY"
+      colors:
+        primary: "#007bff"
+        success: "#28a745"
+      {{- else if eq . "east_asia" }}
+      numberFormat: "decimal_point"
+      dateFormat: "YYYY/MM/DD"
+      colors:
+        primary: "#c8102e"  # Auspicious red
+        success: "#d4a574"  # Gold
+      {{- else if eq . "southeast_asia" }}
+      numberFormat: "decimal_point"
+      dateFormat: "DD/MM/YYYY"
+      colors:
+        primary: "#2e8b57"
+        success: "#228b22"
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
