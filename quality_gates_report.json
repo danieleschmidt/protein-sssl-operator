@@ -1,0 +1,322 @@
+{
+  "overall_passed": false,
+  "total_score": 83.96038651960188,
+  "gate_results": [
+    {
+      "gate_name": "code_execution",
+      "passed": true,
+      "score": 100.0,
+      "details": {
+        "successful_executions": 3,
+        "total_files": 3,
+        "errors": [],
+        "success_rate": 1.0
+      },
+      "error_message": null,
+      "execution_time": 0.09896302223205566
+    },
+    {
+      "gate_name": "security_scan",
+      "passed": false,
+      "score": 93.46534653465346,
+      "details": {
+        "files_scanned": 101,
+        "total_issues": 47,
+        "high_severity_issues": 19,
+        "average_security_score": 93.46534653465346
+      },
+      "error_message": null,
+      "execution_time": 0.38907575607299805
+    },
+    {
+      "gate_name": "test_coverage",
+      "passed": false,
+      "score": 0.0,
+      "details": {
+        "coverage_percentage": 0.0,
+        "files_analyzed": 101,
+        "total_functions": 0,
+        "documented_functions": 0,
+        "documentation_coverage": 0.0
+      },
+      "error_message": null,
+      "execution_time": 1.3536732196807861
+    },
+    {
+      "gate_name": "performance_benchmarks",
+      "passed": true,
+      "score": 100.0,
+      "details": {
+        "benchmarks": [
+          {
+            "function_name": "demo_basic_protein_folding",
+            "success": true,
+            "avg_latency_ms": 1.7665863037109375,
+            "min_latency_ms": 1.6586780548095703,
+            "max_latency_ms": 1.8537044525146484,
+            "p95_latency_ms": 1.8461227416992188,
+            "throughput_ops_per_sec": 566.0634852083783,
+            "memory_used_mb": 0.0,
+            "avg_cpu_percent": 79.4,
+            "requirements_met": {
+              "latency": "True",
+              "throughput": "True",
+              "memory": true,
+              "cpu": "True"
+            },
+            "overall_passed": "True"
+          }
+        ],
+        "total_benchmarks": 1,
+        "passed_benchmarks": 1
+      },
+      "error_message": null,
+      "execution_time": 0.2184920310974121
+    },
+    {
+      "gate_name": "documentation_quality",
+      "passed": true,
+      "score": 80.0,
+      "details": {
+        "existing_docs": [
+          "README.md",
+          "CONTRIBUTING.md",
+          "LICENSE",
+          "CHANGELOG.md"
+        ],
+        "missing_required_docs": [],
+        "readme_score": 60.0,
+        "documentation_coverage": 100.0
+      },
+      "error_message": null,
+      "execution_time": 0.00035452842712402344
+    },
+    {
+      "gate_name": "research_reproducibility",
+      "passed": true,
+      "score": 100.0,
+      "details": {
+        "reproducible": true,
+        "average_consistency": 1.0,
+        "consistency_scores": {
+          "accuracy": 1.0,
+          "processing_time": 1.0
+        },
+        "statistical_significance": {
+          "accuracy": NaN,
+          "processing_time": NaN
+        },
+        "effect_sizes": {
+          "accuracy": 0.0,
+          "processing_time": 0.0
+        },
+        "significant_differences_count": 0,
+        "total_runs": 3,
+        "reproducibility_score": 100.0
+      },
+      "error_message": null,
+      "execution_time": 0.002995014190673828
+    },
+    {
+      "gate_name": "research_statistical_significance",
+      "passed": "True",
+      "score": 98.21774562216166,
+      "details": {
+        "p_value": 0.017822543778383413,
+        "cohens_d": 0.8940873682867758,
+        "baseline_mean": 0.7936386284693959,
+        "novel_mean": 0.8358761502121734,
+        "significant": "True",
+        "meaningful_effect": "True"
+      },
+      "error_message": null,
+      "execution_time": 0.0008003711700439453
+    },
+    {
+      "gate_name": "research_baseline_comparisons",
+      "passed": true,
+      "score": 100,
+      "details": {
+        "comparison_indicators": [
+          [
+            "robust_protein_system.py",
+            "baseline"
+          ],
+          [
+            "scalable_protein_system.py",
+            "baseline"
+          ],
+          [
+            "comprehensive_quality_gates.py",
+            "baseline"
+          ],
+          [
+            "domain_analysis.py",
+            "baseline"
+          ],
+          [
+            "structure_metrics.py",
+            "comparison"
+          ],
+          [
+            "neural_operator.py",
+            "vs"
+          ],
+          [
+            "__init__.py",
+            "benchmark"
+          ],
+          [
+            "acceleration_techniques.py",
+            "vs"
+          ],
+          [
+            "bayesian_uncertainty.py",
+            "control"
+          ],
+          [
+            "experimental_framework.py",
+            "baseline"
+          ],
+          [
+            "integrated_research_framework.py",
+            "baseline"
+          ],
+          [
+            "mathematical_documentation.py",
+            "baseline"
+          ],
+          [
+            "novel_ssl_objectives.py",
+            "baseline"
+          ],
+          [
+            "accessibility_framework.py",
+            "vs"
+          ],
+          [
+            "adaptive_scaling.py",
+            "baseline"
+          ],
+          [
+            "advanced_autoscaling.py",
+            "control"
+          ],
+          [
+            "advanced_caching.py",
+            "vs"
+          ],
+          [
+            "autonomous_quality.py",
+            "baseline"
+          ],
+          [
+            "benchmarking_suite.py",
+            "baseline"
+          ],
+          [
+            "compliance_framework.py",
+            "control"
+          ],
+          [
+            "compliance_monitoring.py",
+            "control"
+          ],
+          [
+            "compute_optimization.py",
+            "baseline"
+          ],
+          [
+            "cultural_adaptation.py",
+            "control"
+          ],
+          [
+            "distributed_computing.py",
+            "state.*art"
+          ],
+          [
+            "enterprise_testing.py",
+            "baseline"
+          ],
+          [
+            "error_handling_v2.py",
+            "vs"
+          ],
+          [
+            "global_deployment_manager.py",
+            "control"
+          ],
+          [
+            "legal_compliance.py",
+            "control"
+          ],
+          [
+            "multi_region_deployment.py",
+            "reference"
+          ],
+          [
+            "optimization.py",
+            "benchmark"
+          ],
+          [
+            "optimization_master.py",
+            "benchmark"
+          ],
+          [
+            "parallel_processing.py",
+            "control"
+          ],
+          [
+            "research_acceleration.py",
+            "baseline"
+          ],
+          [
+            "security_framework.py",
+            "control"
+          ],
+          [
+            "storage_optimization.py",
+            "reference"
+          ],
+          [
+            "quality_gates.py",
+            "reference"
+          ],
+          [
+            "test_generation1_working.py",
+            "baseline"
+          ],
+          [
+            "test_generation2_robust.py",
+            "control"
+          ],
+          [
+            "test_generation2_working.py",
+            "control"
+          ],
+          [
+            "test_generation3_scale.py",
+            "vs"
+          ],
+          [
+            "test_global_deployment.py",
+            "control"
+          ],
+          [
+            "test_integration.py",
+            "vs"
+          ]
+        ],
+        "indicators_found": 42,
+        "files_with_comparisons": 42
+      },
+      "error_message": null,
+      "execution_time": 0.16939568519592285
+    }
+  ],
+  "coverage_percentage": 0.0,
+  "security_score": 93.46534653465346,
+  "performance_score": 100.0,
+  "research_reproducibility_score": 99.40591520738722,
+  "timestamp": 1755577455.1580007
+}
