@@ -1,0 +1,28 @@
+{
+  "uptime_seconds": 0.17458534240722656,
+  "throughput_per_minute": 15,
+  "latency_statistics": {
+    "average_ms": 11.274449030558268,
+    "p95_ms": 15.294075012207031,
+    "p99_ms": 15.294075012207031
+  },
+  "cluster_performance": {
+    "total_workers": 4,
+    "active_workers": 4,
+    "total_load": 0,
+    "average_load_per_worker": 0.0,
+    "average_completion_time": 0.011274449030558268,
+    "tasks_in_queue": 0,
+    "recent_throughput": 15
+  },
+  "resource_efficiency": {
+    "compression_ratio": 0.95,
+    "worker_utilization": 0.0
+  },
+  "communication_stats": {
+    "messages_sent": 0,
+    "messages_received": 0,
+    "bytes_transferred": 0,
+    "network_latency": "deque([], maxlen=100)"
+  }
+}
