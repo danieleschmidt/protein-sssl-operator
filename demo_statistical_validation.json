@@ -1,0 +1,279 @@
+{
+  "framework_configuration": {
+    "alpha": 0.001,
+    "multiple_testing_correction": "fdr_bh",
+    "min_effect_size": 0.3,
+    "desired_power": 0.9,
+    "effect_size_for_power": 0.5,
+    "bootstrap_samples": 5000,
+    "confidence_level": 0.99,
+    "permutation_samples": 10000,
+    "cv_folds": 10,
+    "cv_repeats": 5,
+    "stratification": true,
+    "random_seed": 42,
+    "reproducibility_threshold": 0.95,
+    "prior_alpha": 1.0,
+    "prior_beta": 1.0,
+    "mcmc_samples": 10000,
+    "heterogeneity_threshold": 0.25,
+    "publication_bias_tests": true
+  },
+  "statistical_validation_report": {
+    "summary": {
+      "total_statistical_tests": 12,
+      "significant_tests_after_correction": 6,
+      "statistical_power": {
+        "tests_with_power_analysis": 3,
+        "underpowered_tests": 3,
+        "mean_power": 0.39496760353570454
+      },
+      "effect_sizes": {
+        "mean_effect_size": 0.1558921122959157,
+        "large_effects_count": 0,
+        "effect_size_distribution": {
+          "negligible": 6,
+          "small": 2,
+          "medium": 1,
+          "large": 0
+        }
+      }
+    },
+    "multiple_testing_correction": {
+      "correction_method": "fdr_bh",
+      "total_tests": 12,
+      "significant_before_correction": 6,
+      "significant_after_correction": 6,
+      "alpha_level": 0.001,
+      "family_wise_error_rate": "not_applicable"
+    },
+    "detailed_results": [
+      {
+        "test_name": "Paired t-test: AlphaFold-style vs ESMFold-style",
+        "p_value": 0.009352376436630339,
+        "adjusted_p_value": 0.014028564654945508,
+        "effect_size": 0.3648799890912683,
+        "effect_interpretation": "small",
+        "is_significant": false,
+        "practical_significance": true,
+        "confidence_interval": [
+          -0.0005564005222914636,
+          0.07116759955337726
+        ],
+        "sample_size": 100,
+        "power": 0.2388803297768206,
+        "warnings": [
+          "Statistical power (0.239) below desired level (0.9)"
+        ]
+      },
+      {
+        "test_name": "Paired t-test: Our Method vs AlphaFold-style",
+        "p_value": 0.020265594782254204,
+        "adjusted_p_value": 0.027020793043005604,
+        "effect_size": 0.28281611605425977,
+        "effect_interpretation": "small",
+        "is_significant": false,
+        "practical_significance": false,
+        "confidence_interval": [
+          -0.0011908052225461153,
+          0.050444789136560614
+        ],
+        "sample_size": 100,
+        "power": 0.09849268448740939,
+        "warnings": [
+          "Statistical power (0.098) below desired level (0.9)"
+        ]
+      },
+      {
+        "test_name": "Paired t-test: Our Method vs ESMFold-style",
+        "p_value": 1.8446687194417777e-06,
+        "adjusted_p_value": 3.6893374388835554e-06,
+        "effect_size": 0.6103599259960463,
+        "effect_interpretation": "medium",
+        "is_significant": true,
+        "practical_significance": true,
+        "confidence_interval": [
+          0.027712896039347113,
+          0.08998491977508678
+        ],
+        "sample_size": 100,
+        "power": 0.8475297963428835,
+        "warnings": [
+          "Statistical power (0.848) below desired level (0.9)"
+        ]
+      },
+      {
+        "test_name": "Correlation Analysis: AlphaFold-style",
+        "p_value": 0.7271329139863943,
+        "adjusted_p_value": 0.7271329139863943,
+        "effect_size": 0.035226579824160956,
+        "effect_interpretation": "negligible",
+        "is_significant": false,
+        "practical_significance": false,
+        "confidence_interval": null,
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Bias Test: AlphaFold-style",
+        "p_value": 2.9832592107759126e-07,
+        "adjusted_p_value": 7.15982210586219e-07,
+        "effect_size": -0.049211010709914016,
+        "effect_interpretation": null,
+        "is_significant": true,
+        "practical_significance": false,
+        "confidence_interval": null,
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Performance Metrics: AlphaFold-style",
+        "p_value": 0.0,
+        "adjusted_p_value": 0.0,
+        "effect_size": null,
+        "effect_interpretation": null,
+        "is_significant": true,
+        "practical_significance": false,
+        "confidence_interval": [
+          0.008691082511971782,
+          0.014738700124379474
+        ],
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Correlation Analysis: ESMFold-style",
+        "p_value": 0.118970903573554,
+        "adjusted_p_value": 0.1427650842882648,
+        "effect_size": 0.15557600139664368,
+        "effect_interpretation": "small",
+        "is_significant": false,
+        "practical_significance": false,
+        "confidence_interval": null,
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Bias Test: ESMFold-style",
+        "p_value": 9.203748874142548e-14,
+        "adjusted_p_value": 2.7611246622427643e-13,
+        "effect_size": -0.0849539208269417,
+        "effect_interpretation": null,
+        "is_significant": true,
+        "practical_significance": false,
+        "confidence_interval": null,
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Performance Metrics: ESMFold-style",
+        "p_value": 0.0,
+        "adjusted_p_value": 0.0,
+        "effect_size": null,
+        "effect_interpretation": null,
+        "is_significant": true,
+        "practical_significance": false,
+        "confidence_interval": [
+          0.015061610621382228,
+          0.026109151816323874
+        ],
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Correlation Analysis: Our Method",
+        "p_value": 0.2544162023377142,
+        "adjusted_p_value": 0.27754494800477914,
+        "effect_size": 0.11437046240923399,
+        "effect_interpretation": "small",
+        "is_significant": false,
+        "practical_significance": false,
+        "confidence_interval": null,
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Bias Test: Our Method",
+        "p_value": 0.003690913009049779,
+        "adjusted_p_value": 0.006327279444085334,
+        "effect_size": -0.026035132571516052,
+        "effect_interpretation": null,
+        "is_significant": false,
+        "practical_significance": false,
+        "confidence_interval": null,
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      },
+      {
+        "test_name": "Performance Metrics: Our Method",
+        "p_value": 0.0,
+        "adjusted_p_value": 0.0,
+        "effect_size": null,
+        "effect_interpretation": null,
+        "is_significant": true,
+        "practical_significance": false,
+        "confidence_interval": [
+          0.006481667145315745,
+          0.011049921828679797
+        ],
+        "sample_size": 100,
+        "power": null,
+        "warnings": []
+      }
+    ],
+    "meta_analyses": {
+      "meta_analysis_1": {
+        "meta_effect_size": 0.42338012231262456,
+        "confidence_interval": [
+          0.3186137154829542,
+          0.5281465291422949
+        ],
+        "heterogeneity_i_squared": 0.5753308677671649,
+        "heterogeneity_interpretation": "moderate",
+        "q_statistic": 9.419097590090216,
+        "degrees_of_freedom": 4,
+        "number_of_studies": 5,
+        "total_sample_size": 350,
+        "individual_effects": [
+          0.10906820310122518,
+          0.45893792048723836,
+          0.31409172532858626,
+          0.4704302600373878,
+          0.6174723983236776
+        ],
+        "study_weights": [
+          50,
+          60,
+          70,
+          80,
+          90
+        ]
+      }
+    },
+    "validation_criteria": {
+      "significance_threshold": 0.001,
+      "minimum_effect_size": 0.3,
+      "desired_power": 0.9,
+      "confidence_level": 0.99,
+      "reproducibility_threshold": 0.95
+    },
+    "recommendations": [
+      "Consider more stringent multiple testing correction due to high proportion of significant results",
+      "Increase sample sizes to achieve adequate statistical power (>0.8)",
+      "Consider practical significance of small effect sizes found"
+    ]
+  },
+  "export_metadata": {
+    "export_timestamp": 1755803315.0775776,
+    "framework_version": "1.0.0",
+    "total_tests_performed": 12
+  }
+}

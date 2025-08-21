@@ -1,17 +1,17 @@
 {
-  "uptime_seconds": 0.17458534240722656,
+  "uptime_seconds": 0.17627620697021484,
   "throughput_per_minute": 15,
   "latency_statistics": {
-    "average_ms": 11.274449030558268,
-    "p95_ms": 15.294075012207031,
-    "p99_ms": 15.294075012207031
+    "average_ms": 11.380084355672201,
+    "p95_ms": 15.714406967163086,
+    "p99_ms": 15.714406967163086
   },
   "cluster_performance": {
     "total_workers": 4,
     "active_workers": 4,
     "total_load": 0,
     "average_load_per_worker": 0.0,
-    "average_completion_time": 0.011274449030558268,
+    "average_completion_time": 0.0113800843556722,
     "tasks_in_queue": 0,
     "recent_throughput": 15
   },
