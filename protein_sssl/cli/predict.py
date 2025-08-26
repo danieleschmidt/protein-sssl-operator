@@ -1,12 +1,21 @@
 """
 Prediction command for protein-sssl CLI.
 """
-import torch
 from pathlib import Path
 import sys
+import os
 
-from ..models.structure_decoder import StructurePredictor
-from ..utils.logging_config import setup_logging
+try:
+    import torch
+    from ..models.structure_decoder import StructurePredictor
+    from ..utils.logging_config import setup_logging
+    TORCH_AVAILABLE = True
+except ImportError:
+    # Fallback to mock implementation
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from protein_sssl.models.next_gen_predictor import NextGenPredictor as StructurePredictor
+    from protein_sssl.utils.logging_config import setup_logging
+    TORCH_AVAILABLE = False
 
 logger = setup_logging(__name__)
 
@@ -17,7 +26,10 @@ def predict_command(args):
     
     # Determine device
     if args.device == "auto":
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if TORCH_AVAILABLE:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            device = "cpu"
     else:
         device = args.device
     

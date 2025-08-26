@@ -1,0 +1,10 @@
+{
+  "sequence_length": 47,
+  "prediction_time": 0.001459360122680664,
+  "torch_available": false,
+  "model_type": "mock",
+  "plddt_score": 93.7041416739209,
+  "confidence": 0.9373725023613175,
+  "pdb_saved": true,
+  "confidence_plot_saved": true
+}

@@ -1,0 +1,1 @@
+Mock confidence plot (matplotlib not available)
