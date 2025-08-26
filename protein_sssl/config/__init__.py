@@ -15,6 +15,10 @@ except ImportError:
             return self.config.get(key, default)
         def set(self, key, value):
             self.config[key] = value
+        def get_default_ssl_config(self):
+            return {"d_model": 1280, "n_layers": 33, "n_heads": 20}
+        def get_default_folding_config(self):
+            return {"operator_layers": 12, "fourier_features": 256}
     
     def load_config(path=None):
         return ConfigManager().config

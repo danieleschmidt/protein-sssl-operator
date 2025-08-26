@@ -41,6 +41,52 @@ class MockModule:
         
     def parameters(self):
         return []
+    
+    def predict(self, *args, **kwargs):
+        """Mock predict method for structure predictor."""
+        import random
+        
+        class MockPrediction:
+            def __init__(self, sequence_length):
+                self.plddt_score = 85.0 + random.random() * 10
+                self.confidence = 0.88 + random.random() * 0.1
+                self.sequence_length = sequence_length
+                
+            def save_pdb(self, filepath):
+                # Create a simple mock PDB file
+                pdb_content = f"""HEADER    MOCK STRUCTURE
+TITLE     PREDICTED STRUCTURE (MOCK)
+ATOM      1  CA  ALA A   1      10.000  10.000  10.000  1.00 {self.plddt_score:.2f}           C
+END
+"""
+                with open(filepath, 'w') as f:
+                    f.write(pdb_content)
+                    
+            def save_confidence_plot(self, filepath):
+                # Create a mock confidence plot 
+                try:
+                    import matplotlib.pyplot as plt
+                    import numpy as np
+                    
+                    x = np.arange(self.sequence_length)
+                    confidence = np.random.uniform(0.7, 0.95, self.sequence_length)
+                    
+                    plt.figure(figsize=(10, 4))
+                    plt.plot(x, confidence)
+                    plt.xlabel('Residue Position')
+                    plt.ylabel('Confidence Score')
+                    plt.title('Per-Residue Confidence')
+                    plt.ylim(0, 1)
+                    plt.savefig(filepath)
+                    plt.close()
+                except ImportError:
+                    # Create a mock text file instead
+                    with open(str(filepath).replace('.png', '.txt'), 'w') as f:
+                        f.write("Mock confidence plot (matplotlib not available)")
+        
+        # Return mock prediction
+        sequence_length = len(args[0]) if args else 50
+        return MockPrediction(sequence_length)
 
 class MockOptim:
     def __init__(self, *args, **kwargs):

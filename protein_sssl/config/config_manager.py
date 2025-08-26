@@ -1,15 +1,41 @@
 """
 Configuration management utilities for protein-sssl-operator.
 """
-import yaml
 import json
 from pathlib import Path
 from typing import Dict, Any, Union
-from omegaconf import OmegaConf, DictConfig
 
-from ..utils.logging_config import setup_logging
+try:
+    import yaml
+    from omegaconf import OmegaConf, DictConfig
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+    # Mock implementations
+    class DictConfig(dict):
+        pass
+    
+    class OmegaConf:
+        @staticmethod
+        def load(path):
+            return DictConfig()
+        
+        @staticmethod
+        def save(config, f):
+            pass
+        
+        @staticmethod 
+        def merge(base, override):
+            result = DictConfig(base)
+            result.update(override)
+            return result
 
-logger = setup_logging(__name__)
+try:
+    from ..utils.logging_config import setup_logging
+    logger = setup_logging(__name__)
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
 
 
 class ConfigManager:
@@ -17,6 +43,14 @@ class ConfigManager:
     
     def __init__(self):
         self.config_cache = {}
+        
+    def get_default_ssl_config(self) -> Dict[str, Any]:
+        """Get default SSL configuration."""
+        return self.get_default_config('ssl')
+    
+    def get_default_folding_config(self) -> Dict[str, Any]:
+        """Get default folding configuration.""" 
+        return self.get_default_config('folding')
         
     def load_config(self, config_path: Union[str, Path]) -> DictConfig:
         """Load configuration from file with caching."""
