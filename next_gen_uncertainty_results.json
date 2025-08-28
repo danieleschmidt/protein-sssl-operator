@@ -1,0 +1,117 @@
+{
+  "uncertainty_estimates": [
+    {
+      "sequence_length": 47,
+      "epistemic_uncertainty": 0.021839655146682516,
+      "aleatoric_uncertainty": 0.07179865812051303,
+      "total_uncertainty": 0.07504677104867556,
+      "confidence_interval": [
+        84.2,
+        94.2
+      ],
+      "coverage_probability": 0.8,
+      "information_gain": 0.22676314511787932,
+      "temporal_stability": 0.9249532289513245,
+      "spatial_coherence": 0.928201341879487
+    },
+    {
+      "sequence_length": 50,
+      "epistemic_uncertainty": 0.03889506273597384,
+      "aleatoric_uncertainty": 0.06000696669583362,
+      "total_uncertainty": 0.07150987314539319,
+      "confidence_interval": [
+        87.7,
+        97.7
+      ],
+      "coverage_probability": 0.8,
+      "information_gain": 0.21139016248255543,
+      "temporal_stability": 0.9284901268546069,
+      "spatial_coherence": 0.9399930333041664
+    },
+    {
+      "sequence_length": 34,
+      "epistemic_uncertainty": 0.08306588741813371,
+      "aleatoric_uncertainty": 0.1067541372662439,
+      "total_uncertainty": 0.1352641396528367,
+      "confidence_interval": [
+        71.3,
+        81.3
+      ],
+      "coverage_probability": 0.8,
+      "information_gain": 0.41601945170768695,
+      "temporal_stability": 0.8647358603471633,
+      "spatial_coherence": 0.8932458627337561
+    },
+    {
+      "sequence_length": 200,
+      "epistemic_uncertainty": 0.08306588741813371,
+      "aleatoric_uncertainty": 0.145484792000528,
+      "total_uncertainty": 0.16752840462440677,
+      "confidence_interval": [
+        80.1,
+        90.1
+      ],
+      "coverage_probability": 0.8,
+      "information_gain": 0.5093056517650161,
+      "temporal_stability": 0.8324715953755932,
+      "spatial_coherence": 0.854515207999472
+    },
+    {
+      "sequence_length": 76,
+      "epistemic_uncertainty": 0.09615996347836138,
+      "aleatoric_uncertainty": 0.06567935758897203,
+      "total_uncertainty": 0.11644963112633656,
+      "confidence_interval": [
+        89.3,
+        99.3
+      ],
+      "coverage_probability": 0.8,
+      "information_gain": 0.3435364769677111,
+      "temporal_stability": 0.8835503688736634,
+      "spatial_coherence": 0.934320642411028
+    }
+  ],
+  "calibration_metrics": {
+    "calibration_score": 0.487563220965499,
+    "coverage_rate": 1.0,
+    "average_interval_width": 5.0,
+    "average_uncertainty_error": 11.297471161380042,
+    "n_samples": 5
+  },
+  "uncertainty_report": {
+    "total_estimates": 10,
+    "epistemic_uncertainty_stats": {
+      "mean": 0.0803826273589092,
+      "min": 0.021839655146682516,
+      "max": 0.09615996347836138
+    },
+    "aleatoric_uncertainty_stats": {
+      "mean": 0.08994478233441812,
+      "min": 0.06000696669583362,
+      "max": 0.145484792000528
+    },
+    "total_uncertainty_stats": {
+      "mean": 0.12336723776666507,
+      "min": 0.07150987314539319,
+      "max": 0.1743919816952508
+    },
+    "performance_stats": {
+      "average_computation_time": 0.0005303382873535156,
+      "fastest_computation": 0.0004279613494873047,
+      "slowest_computation": 0.0007002353668212891
+    }
+  },
+  "system_configuration": {
+    "conformal_config": {
+      "alpha": 0.1,
+      "coverage_target": 0.9,
+      "prediction_method": "split_conformal"
+    },
+    "bayesian_config": {
+      "n_samples": 500,
+      "inference_method": "variational",
+      "prior_scale": 1.0
+    }
+  },
+  "timestamp": 1756340888.4687934
+}
